@@ -1,8 +1,8 @@
 // app/(app)/(tabs)/_layout.tsx
-import { Tabs } from 'expo-router';
-import React from 'react';
 import { HapticTab } from '@/components/haptic-tab';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Tabs } from 'expo-router';
+import React from 'react';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -43,6 +43,8 @@ export default function TabLayout() {
       <Tabs.Screen name="settings" options={{ title: 'Config' }} />
 
       <Tabs.Screen name="totp-setup" options={{ title: '2FA' }} />
+      
+      <Tabs.Screen name="debug" options={{ title: '🐛 Debug', href: null }} />
 
     </Tabs>
   );

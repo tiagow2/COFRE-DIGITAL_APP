@@ -1,56 +1,57 @@
-import 'react-native-get-random-values';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useRef } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import 'react-native-get-random-values';
 import 'react-native-reanimated';
-import { useEffect, useRef } from 'react';
-import { View, ActivityIndicator } from 'react-native';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { FinanceProvider } from '@/context/FinanceContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, totpRequired } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-
   const routerRef = useRef(router);
-  useEffect(() => { routerRef.current = router; });
+
+  useEffect(() => { 
+    routerRef.current = router; 
+  }, [router]);
 
   useEffect(() => {
     if (loading) return;
 
-    const inAuth = segments[0] === '(auth)';
-    const inApp  = segments[0] === '(app)';
+    const inAuthGroup = segments[0] === '(auth)';
+    const inAppGroup = segments[0] === '(app)';
 
-    // Sem usuário e sem TOTP pendente → vai para login
-    if (!user && !totpRequired && !inAuth) {
-      routerRef.current.replace('/(auth)/login' as any);
-      return;
+    if (!user && !totpRequired) {
+      // 1. Não está logado -> Vai para o login (se já não estiver lá)
+      if (!inAuthGroup) {
+        routerRef.current.replace('/(auth)/login');
+      }
+    } else if (totpRequired) {
+      // 2. Precisa do TOTP -> Vai para o login digitar o código (se já não estiver lá)
+      if (!inAuthGroup) {
+        routerRef.current.replace('/(auth)/login');
+      }
+    } else if (user && !totpRequired) {
+      // 3. Logado e tudo OK -> Vai para as abas do app (se já não estiver lá)
+      // Isso resolve o erro da tela preta na raiz!
+      if (!inAppGroup) {
+        routerRef.current.replace('/(app)/(tabs)');
+      }
     }
 
-    // TOTP pendente → fica na tela de login para digitar o código
-    if (totpRequired && !inAuth) {
-      routerRef.current.replace('/(auth)/login' as any);
-      return;
-    }
-
-    // Logado e TOTP ok, ainda na área de auth → vai para o app
-    if (user && !totpRequired && inAuth) {
-      routerRef.current.replace('/(app)/(tabs)/index' as any);
-      return;
-    }
-
-    // Já está no lugar certo → não faz nada
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, loading, totpRequired, segments[0]]);
+  }, [user, loading, totpRequired, segments]);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#1565C0" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1565C0' }}>
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>🔐</Text>
+        <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 24 }}>Cofre Digital</Text>
+        <ActivityIndicator size="large" color="#fff" />
       </View>
     );
   }

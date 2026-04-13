@@ -1,8 +1,8 @@
 // app/(app)/(tabs)/settings.tsx
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Switch, Alert, TextInput, Modal } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
+import React, { useState } from 'react';
+import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
@@ -97,6 +97,10 @@ export default function SettingsScreen() {
             <Text style={s.retireVal}>R$ {calcRetirement().toLocaleString('pt-BR')}/mês</Text>
           </View>
         </View>
+
+        <TouchableOpacity style={[s.logoutBtn, { backgroundColor: '#1565C0' }]} onPress={() => router.push('/(app)/(tabs)/debug' as never)}>
+          <Text style={[s.logoutTxt, { color: '#fff' }]}>Ver Logs de Debug</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={s.logoutBtn} onPress={() =>
           Alert.alert('Sair', 'Deseja encerrar sua sessão?', [

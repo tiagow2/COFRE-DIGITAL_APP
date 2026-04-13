@@ -1,14 +1,15 @@
-// app/(auth)/login.tsx
-// Versão atualizada com suporte a TOTP (segundo fator)
-import React, { useState, useRef } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
-  Alert, Animated,
-} from 'react-native';
+import { useAuth } from '@/context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
+import React, { useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert, Animated,
+  KeyboardAvoidingView, Platform, ScrollView,
+  StyleSheet,
+  Text, TextInput, TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function LoginScreen() {
   const { login, resetPassword, authError, clearError, totpRequired, confirmTOTP, cancelTOTPLogin } = useAuth();
@@ -100,7 +101,7 @@ export default function LoginScreen() {
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
             <View style={styles.logoWrap}>
-              <Text style={styles.logoEmoji}>🔐</Text>
+              <Text style={styles.logoEmoji}>CD</Text>
             </View>
             <Text style={styles.appName}>Verificação em dois fatores</Text>
             <Text style={styles.tagline}>Abra o Google Authenticator e insira o código</Text>

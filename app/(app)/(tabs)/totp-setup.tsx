@@ -1,12 +1,21 @@
 // app/(app)/(tabs)/totp-setup.tsx
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, TextInput, Alert, ActivityIndicator, Animated,
-} from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '@/context/AuthContext';
 import { useTOTP } from '@/hooks/useTOTP';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated, Clipboard,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 
 // ─── Componente de step indicator ─────────────────────────────────────────────
 function StepDot({ active, done }: { active: boolean; done: boolean }) {
@@ -30,43 +39,53 @@ const dot = StyleSheet.create({
 // ─── Tela principal ───────────────────────────────────────────────────────────
 export default function TOTPSetupScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const {
-    step, otpUri, loading, error,
+    step, secret, otpUri, loading, error,
     totpEnabled, startSetup, confirmSetup,
     cancelSetup, disableTOTP, checkIfEnabled, clearError,
   } = useTOTP();
 
   const [code, setCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false); // 🔥 CORREÇÃO: Controle da transição de tela
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    checkIfEnabled();
-  }, []);
+    if (user?.uid) {
+      checkIfEnabled(user.uid);
+    }
+  }, [user]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1, duration: 350, useNativeDriver: true,
     }).start();
-  }, [step]);
+  }, [step, isVerifying]);
 
   const handleStartSetup = () => {
     if (!user?.email) return;
     fadeAnim.setValue(0);
+    setIsVerifying(false); // Garante que começa no QR Code
     startSetup(user.email);
   };
 
   const handleConfirm = async () => {
-    const ok = await confirmSetup(code);
-    if (ok) setCode('');
+    if (!user?.uid) return;
+    const ok = await confirmSetup(code, user.uid);
+    if (ok) {
+      setCode('');
+      setIsVerifying(false);
+    }
   };
 
   const handleDisable = () => {
+    if (!user?.uid) return;
     Alert.alert(
       'Desativar autenticação em dois fatores',
       'Sua conta ficará menos protegida. Tem certeza?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Desativar', style: 'destructive', onPress: disableTOTP },
+        { text: 'Desativar', style: 'destructive', onPress: () => disableTOTP(user!.uid) },
       ],
     );
   };
@@ -119,7 +138,7 @@ export default function TOTPSetupScreen() {
             Seu Cofre Digital agora está protegido com autenticação em dois fatores.
             A partir do próximo login, o app pedirá o código do Google Authenticator.
           </Text>
-          <TouchableOpacity style={s.primaryBtn} onPress={() => checkIfEnabled()}>
+          <TouchableOpacity style={s.primaryBtn} onPress={() => router.back()}>
             <Text style={s.primaryTxt}>Entendido</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -128,7 +147,8 @@ export default function TOTPSetupScreen() {
   }
 
   // ─── Estado: exibir QR Code ────────────────────────────────────────────────
-  if (step === 'qrcode') {
+  // 🔥 CORREÇÃO: Só mostra o QR Code se isVerifying for falso
+  if (step === 'qrcode' && !isVerifying) {
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView contentContainerStyle={s.scroll}>
@@ -171,6 +191,23 @@ export default function TOTPSetupScreen() {
               )}
             </View>
             <Text style={s.qrHint}>Mantenha este QR Code em segredo.</Text>
+
+            {/* CHAVE DE CONFIGURAÇÃO */}
+            {secret && (
+              <View style={s.secretBox}>
+                <Text style={s.secretLabel}>Ou configure manualmente:</Text>
+                <Text style={s.secretText}>{secret}</Text>
+                <TouchableOpacity
+                  style={s.copyBtn}
+                  onPress={() => {
+                    Clipboard.setString(secret);
+                    Alert.alert('✅ Copiado', 'Chave copiada para a área de transferência.');
+                  }}
+                >
+                  <Text style={s.copyBtnTxt}>📋 Copiar chave</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View style={s.btnRow}>
@@ -179,7 +216,12 @@ export default function TOTPSetupScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.primaryBtn, { flex: 1 }]}
-              onPress={() => { fadeAnim.setValue(0); setCode(''); clearError(); }}
+              onPress={() => { 
+                fadeAnim.setValue(0); 
+                setCode(''); 
+                clearError(); 
+                setIsVerifying(true); // 🔥 CORREÇÃO: Transforma a tela!
+              }} 
             >
               <Text style={s.primaryTxt}>Já escaniei →</Text>
             </TouchableOpacity>
@@ -190,40 +232,38 @@ export default function TOTPSetupScreen() {
   }
 
   // ─── Estado: verificar código ──────────────────────────────────────────────
-  if (step === 'qrcode' === false && step !== 'idle' && step !== 'done') {
-    // step === 'verify' — nunca chegará aqui pela lógica acima
+  // Estado 'verify' - exibir tela de verificação do código
+  if (step === 'verify') {
+    // step === 'verify'
   }
 
-  // ─── Estado idle (não ativo, não configurando) ou tela de verificação ─────
-  // Quando o usuário clica "Já escaniei", o step continua 'qrcode' mas
-  // vamos usar um flag local para mostrar a tela de verificação.
-  // Refatoramos usando um estado interno neste componente:
+  // ─── Estado idle ou tela de verificação ─────────────────────────────────────
   return <VerifyStep
     code={code}
     setCode={setCode}
     loading={loading}
     error={error}
     onConfirm={handleConfirm}
-    onBack={cancelSetup}
+    onBack={() => {
+      if (step === 'qrcode') {
+        setIsVerifying(false); // Volta para o QR Code
+      } else {
+        cancelSetup();
+      }
+    }}
     onStartSetup={handleStartSetup}
     step={step}
     clearError={clearError}
-    totpEnabled={totpEnabled}
+    isVerifying={isVerifying}
   />;
 }
 
 // ─── Sub-componente: tela de verificação / entrada ────────────────────────────
 function VerifyStep({
   code, setCode, loading, error,
-  onConfirm, onBack, onStartSetup, step, clearError, totpEnabled,
-}: {
-  code: string; setCode: (v: string) => void;
-  loading: boolean; error: string | null;
-  onConfirm: () => void; onBack: () => void;
-  onStartSetup: () => void; step: string;
-  clearError: () => void; totpEnabled: boolean;
-}) {
-  // Se step === 'idle' e não tem TOTP → tela de apresentação
+  onConfirm, onBack, onStartSetup, step, clearError, isVerifying,
+}: any) {
+  
   if (step === 'idle') {
     return (
       <SafeAreaView style={s.safe}>
@@ -231,7 +271,7 @@ function VerifyStep({
           <Text style={s.pageTitle}>Autenticação em dois fatores</Text>
 
           <View style={s.heroCard}>
-            <Text style={s.heroIcon}>🛡️</Text>
+            <Text style={s.heroIcon}>S</Text>
             <Text style={s.heroTitle}>Proteja seu cofre</Text>
             <Text style={s.heroDesc}>
               O 2FA adiciona uma camada extra de segurança. Além da senha, você precisará de um código temporário do Google Authenticator para entrar.
@@ -253,70 +293,76 @@ function VerifyStep({
     );
   }
 
-  // step === 'qrcode' mas usuário clicou "Já escaniei" → mostrar input de código
-  return (
-    <SafeAreaView style={s.safe}>
-      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={s.pageTitle}>Configurar 2FA</Text>
+  // showVerifyStep === true → mostrar tela de verificação do código
+  if (isVerifying) {
+    return (
+      <SafeAreaView style={s.safe}>
+        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+          <Text style={s.pageTitle}>Configurar 2FA</Text>
 
-        {/* Steps */}
-        <View style={s.steps}>
-          <StepDot active done />
-          <View style={s.stepLine} />
-          <StepDot active done />
-          <View style={s.stepLine} />
-          <StepDot active={true} done={false} />
-        </View>
-        <View style={s.stepsLabels}>
-          <Text style={[s.stepLabel, { color: '#16A34A' }]}>Instalar</Text>
-          <Text style={[s.stepLabel, { color: '#16A34A' }]}>Escanear</Text>
-          <Text style={[s.stepLabel, s.stepLabelActive]}>Verificar</Text>
-        </View>
+          {/* Steps */}
+          <View style={s.steps}>
+            <StepDot active done />
+            <View style={s.stepLine} />
+            <StepDot active done />
+            <View style={s.stepLine} />
+            <StepDot active={true} done={false} />
+          </View>
+          <View style={s.stepsLabels}>
+            <Text style={[s.stepLabel, { color: '#16A34A' }]}>Instalar</Text>
+            <Text style={[s.stepLabel, { color: '#16A34A' }]}>Escanear</Text>
+            <Text style={[s.stepLabel, s.stepLabelActive]}>Verificar</Text>
+          </View>
 
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Passo 3 — Confirme o código</Text>
-          <Text style={s.cardDesc}>
-            Digite o código de <Text style={{ fontWeight: '700' }}>6 dígitos</Text> que aparece agora no Google Authenticator para confirmar que tudo está funcionando.
-          </Text>
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Passo 3 — Confirme o código</Text>
+            <Text style={s.cardDesc}>
+              Digite o código de <Text style={{ fontWeight: '700' }}>6 dígitos</Text> que aparece agora no Google Authenticator para confirmar que tudo está funcionando.
+            </Text>
 
-          {error ? (
-            <View style={s.errorBox}>
-              <Text style={s.errorTxt}>{error}</Text>
-            </View>
-          ) : null}
+            {error ? (
+              <View style={s.errorBox}>
+                <Text style={s.errorTxt}>{error}</Text>
+              </View>
+            ) : null}
 
-          <Text style={s.fieldLabel}>Código de verificação</Text>
-          <TextInput
-            style={s.codeInput}
-            value={code}
-            onChangeText={v => { setCode(v.replace(/\D/g, '').slice(0, 6)); clearError(); }}
-            keyboardType="number-pad"
-            maxLength={6}
-            placeholder="000000"
-            placeholderTextColor="#9CA3AF"
-            textAlign="center"
-            autoFocus
-          />
-          <Text style={s.codeHint}>O código muda a cada 30 segundos.</Text>
-        </View>
+            <Text style={s.fieldLabel}>Código de verificação</Text>
+            <TextInput
+              style={s.codeInput}
+              value={code}
+              onChangeText={v => { setCode(v.replace(/\D/g, '').slice(0, 6)); clearError(); }}
+              keyboardType="number-pad"
+              maxLength={6}
+              placeholder="000000"
+              placeholderTextColor="#9CA3AF"
+              textAlign="center"
+              autoFocus
+              onSubmitEditing={onConfirm}
+            />
+            <Text style={s.codeHint}>O código muda a cada 30 segundos.</Text>
+          </View>
 
-        <View style={s.btnRow}>
-          <TouchableOpacity style={s.ghostBtn} onPress={onBack}>
-            <Text style={s.ghostTxt}>← Voltar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.primaryBtn, { flex: 1, opacity: code.length < 6 || loading ? 0.6 : 1 }]}
-            onPress={onConfirm}
-            disabled={code.length < 6 || loading}
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={s.primaryTxt}>Confirmar e ativar</Text>}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+          <View style={s.btnRow}>
+            <TouchableOpacity style={s.ghostBtn} onPress={onBack}>
+              <Text style={s.ghostTxt}>← Voltar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.primaryBtn, { flex: 1, opacity: code.length < 6 || loading ? 0.6 : 1 }]}
+              onPress={onConfirm}
+              disabled={code.length < 6 || loading}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.primaryTxt}>Confirmar e ativar</Text>}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Fallback: renderiza tela vazia (não deve chegar aqui normalmente)
+  return null;
 }
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
@@ -373,6 +419,13 @@ const s = StyleSheet.create({
   // QR code
   qrWrapper: { alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: '#fff', borderRadius: 12, marginVertical: 16, borderWidth: 1, borderColor: '#E5E7EB' },
   qrHint:    { fontSize: 12, color: '#9CA3AF', textAlign: 'center', fontStyle: 'italic' },
+
+  // Chave de configuração
+  secretBox: { marginTop: 16, backgroundColor: '#F9FAFB', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB' },
+  secretLabel: { fontSize: 12, color: '#6B7280', fontWeight: '600', marginBottom: 8 },
+  secretText: { fontSize: 13, color: '#111827', fontFamily: 'monospace', fontWeight: '700', textAlign: 'center', padding: 12, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 10, letterSpacing: 1 },
+  copyBtn: { backgroundColor: '#1565C0', borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
+  copyBtnTxt: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
   // Código input
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#6B7280', marginBottom: 8, marginTop: 8 },

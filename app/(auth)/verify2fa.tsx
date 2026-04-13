@@ -1,12 +1,15 @@
 // app/(auth)/verify2fa.tsx
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
-} from 'react-native';
+import { useAuth } from '@/context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator, Alert,
+    KeyboardAvoidingView, Platform,
+    StyleSheet,
+    Text, TextInput, TouchableOpacity,
+    View,
+} from 'react-native';
 
 export default function Verify2FAScreen() {
   // Agora estamos puxando as funções REAIS do seu AuthContext
@@ -51,7 +54,7 @@ export default function Verify2FAScreen() {
         setError(result.error || 'Código incorreto.');
         setCode('');
       }
-    } catch (err: any) {
+    } catch {
       setError('Erro inesperado ao validar o código.');
       setCode('');
     } finally {

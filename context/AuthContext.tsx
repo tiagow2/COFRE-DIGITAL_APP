@@ -1,9 +1,8 @@
-// context/AuthContext.tsx
-// Versão corrigida: bloqueia auto-login do Firebase quando TOTP está ativo
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { debugLogger } from '@/services/debugLogger';
 import { authService } from '@/services/firebase';
 import { totpStorage, verifyCode } from '@/services/totp';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface AuthUser {
@@ -46,14 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError]       = useState<string | null>(null);
   const [totpRequired, setTotpRequired] = useState(false);
 
-  // ─── Listener Firebase ──────────────────────────────────────────────────────
-  // CORREÇÃO: quando o Firebase restaura a sessão automaticamente ao abrir o app,
-  // verificamos se o TOTP está ativo. Se estiver, bloqueamos o acesso e exigimos
-  // o código — sem isso, o Firebase simplesmente pulava a verificação.
   useEffect(() => {
     const unsub = authService.onAuthChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        const hasTOTP = await totpStorage.isEnabled();
+        const hasTOTP = await totpStorage.isEnabled(firebaseUser.uid); // Passa o UID
 
         if (hasTOTP) {
           // TOTP ativo: não libera o acesso ainda
@@ -84,15 +79,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
+    // Força logout ao inicializar para começar no login
+    authService.logout().catch(() => {});
+
     return unsub;
   }, []); // listener registrado uma única vez
 
-  // ─── Login (1ª etapa) ─────────────────────────────────────────────────────────
   const login = async (email: string, password: string): Promise<LoginResult> => {
     setAuthError(null);
     try {
       const firebaseUser = await authService.login(email, password);
-      const hasTOTP = await totpStorage.isEnabled();
+      // Verifica se ESTE usuário tem TOTP ativo
+      const hasTOTP = await totpStorage.isEnabled(firebaseUser.uid); // Passa o UID
 
       if (hasTOTP) {
         setPendingUser({
@@ -121,33 +119,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ─── Confirmar TOTP (2ª etapa) ────────────────────────────────────────────────
   const confirmTOTP = async (code: string): Promise<{ success: boolean; error?: string }> => {
+    debugLogger.log('confirmTOTP chamado', { pendingUserUid: pendingUser?.uid, codeLength: code?.length });
+    
     if (!pendingUser) {
+      debugLogger.log('confirmTOTP: sem pendingUser');
       return { success: false, error: 'Sessão expirada. Faça login novamente.' };
     }
 
     if (!/^\d{6}$/.test(code)) {
+      debugLogger.log('confirmTOTP: código não é 6 dígitos', { code });
       return { success: false, error: 'Digite exatamente 6 dígitos.' };
     }
 
-    const secret = await totpStorage.load();
-    if (!secret) {
-      // Secret sumiu (edge case): libera sem TOTP
-      const u: AuthUser = { ...pendingUser };
-      setUser(u);
-      await AsyncStorage.setItem('@cofre_user', JSON.stringify(u));
-      setTotpRequired(false);
-      setPendingUser(null);
-      return { success: true };
+    debugLogger.log('Carregando secret para validação');
+    const secret = await totpStorage.load(pendingUser.uid);
+
+    if (!secret || secret.trim().length === 0) {
+      debugLogger.log('confirmTOTP: secret não encontrada ou vazia', { uid: pendingUser.uid });
+      return { success: false, error: 'Chave de segurança não encontrada neste dispositivo. O login foi bloqueado por segurança.' };
     }
 
+    debugLogger.log('Validando código contra secret', { uid: pendingUser.uid, codeReceived: code });
     const valid = verifyCode(code, secret);
+    
     if (!valid) {
+      debugLogger.log('confirmTOTP: código inválido', { code });
       return { success: false, error: 'Código inválido ou expirado. Verifique o Google Authenticator.' };
     }
 
-    // Código válido → liberar acesso
+    debugLogger.log('confirmTOTP: código válido! Login bem-sucedido');
     const u: AuthUser = { ...pendingUser };
     setUser(u);
     await AsyncStorage.setItem('@cofre_user', JSON.stringify(u));
@@ -156,7 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  // ─── Cancelar login TOTP ──────────────────────────────────────────────────────
   const cancelTOTPLogin = async () => {
     await authService.logout(); // limpa sessão do Firebase também
     setTotpRequired(false);
@@ -164,7 +164,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  // ─── Registro ─────────────────────────────────────────────────────────────────
   const register = async (name: string, email: string, password: string) => {
     setAuthError(null);
     try {
@@ -184,7 +183,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ─── Logout ───────────────────────────────────────────────────────────────────
   const logout = async () => {
     await authService.logout();
     setUser(null);
@@ -193,7 +191,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.removeItem('@cofre_user');
   };
 
-  // ─── Reset de senha ───────────────────────────────────────────────────────────
   const resetPassword = async (email: string) => {
     try {
       await authService.resetPassword(email);

@@ -1,16 +1,15 @@
-// hooks/useTOTP.ts
-import { useState, useCallback } from 'react';
+import { debugLogger } from '@/services/debugLogger';
 import {
-  generateSecret,
   buildOtpAuthUri,
-  verifyCode,
+  generateSecret,
   totpStorage,
+  verifyCode,
 } from '@/services/totp';
+import { useCallback, useState } from 'react';
 
 type SetupStep = 'idle' | 'qrcode' | 'verify' | 'done';
 
 interface UseTOTPReturn {
-  // Estado
   step: SetupStep;
   secret: string | null;
   otpUri: string | null;
@@ -18,17 +17,13 @@ interface UseTOTPReturn {
   error: string | null;
   totpEnabled: boolean;
 
-  // Ações de setup (tela de configurações)
   startSetup: (userEmail: string) => void;
-  confirmSetup: (code: string) => Promise<boolean>;
+  confirmSetup: (code: string, uid: string) => Promise<boolean>;
   cancelSetup: () => void;
-  disableTOTP: () => Promise<void>;
+  disableTOTP: (uid: string) => Promise<void>;
 
-  // Ação de login
-  validateLogin: (code: string) => Promise<boolean>;
-
-  // Utilitários
-  checkIfEnabled: () => Promise<void>;
+  validateLogin: (code: string, uid: string) => Promise<boolean>;
+  checkIfEnabled: (uid: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -40,13 +35,12 @@ export function useTOTP(): UseTOTPReturn {
   const [error, setError]         = useState<string | null>(null);
   const [totpEnabled, setTotpEnabled] = useState(false);
 
-  // ─── Verificar se TOTP já está ativo ─────────────────────────────────────
-  const checkIfEnabled = useCallback(async () => {
-    const enabled = await totpStorage.isEnabled();
+  const checkIfEnabled = useCallback(async (uid: string) => {
+    if (!uid) return;
+    const enabled = await totpStorage.isEnabled(uid);
     setTotpEnabled(enabled);
   }, []);
 
-  // ─── Iniciar setup: gera secret e QR code ────────────────────────────────
   const startSetup = useCallback((userEmail: string) => {
     const newSecret = generateSecret();
     const uri = buildOtpAuthUri({ secret: newSecret, userEmail });
@@ -56,38 +50,46 @@ export function useTOTP(): UseTOTPReturn {
     setError(null);
   }, []);
 
-  // ─── Confirmar setup: valida o código digitado e salva ───────────────────
-  const confirmSetup = useCallback(async (code: string): Promise<boolean> => {
-    if (!secret) {
+  const confirmSetup = useCallback(async (code: string, uid: string): Promise<boolean> => {
+    if (!secret || !uid) {
+      debugLogger.log('confirmSetup: secret ou uid vazios', { hasSecret: !!secret, hasUid: !!uid });
       setError('Sessão expirada. Tente novamente.');
       return false;
     }
     if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+      debugLogger.log('confirmSetup: código inválido', { code, length: code.length });
       setError('Digite exatamente 6 dígitos.');
       return false;
     }
 
+    debugLogger.log('confirmSetup: secret sendo usada para validação', { 
+      secretTruncated: secret.slice(0, 5) + '...' + secret.slice(-5),
+      secretLength: secret.length,
+      code,
+      uid 
+    });
+
     setLoading(true);
     setError(null);
 
-    // Pequeno delay para dar feedback visual ao usuário
     await new Promise(r => setTimeout(r, 400));
 
     const valid = verifyCode(code, secret);
+    debugLogger.log('Resultado de confirmSetup', { valid, code });
     if (!valid) {
       setError('Código inválido. Verifique o Google Authenticator e tente novamente.');
       setLoading(false);
       return false;
     }
 
-    await totpStorage.save(secret);
+    debugLogger.log('confirmSetup: código válido! Salvando secret...');
+    await totpStorage.save(uid, secret);
     setTotpEnabled(true);
     setStep('done');
     setLoading(false);
     return true;
   }, [secret]);
 
-  // ─── Cancelar setup ───────────────────────────────────────────────────────
   const cancelSetup = useCallback(() => {
     setStep('idle');
     setSecret(null);
@@ -95,10 +97,10 @@ export function useTOTP(): UseTOTPReturn {
     setError(null);
   }, []);
 
-  // ─── Desativar TOTP ───────────────────────────────────────────────────────
-  const disableTOTP = useCallback(async () => {
+  const disableTOTP = useCallback(async (uid: string) => {
+    if (!uid) return;
     setLoading(true);
-    await totpStorage.remove();
+    await totpStorage.remove(uid);
     setTotpEnabled(false);
     setStep('idle');
     setSecret(null);
@@ -106,19 +108,28 @@ export function useTOTP(): UseTOTPReturn {
     setLoading(false);
   }, []);
 
-  // ─── Validar código no login ──────────────────────────────────────────────
-  const validateLogin = useCallback(async (code: string): Promise<boolean> => {
+  const validateLogin = useCallback(async (code: string, uid: string): Promise<boolean> => {
+    if (!uid) {
+      debugLogger.log('validateLogin: uid vazio');
+      return false;
+    }
     setLoading(true);
     setError(null);
 
-    const savedSecret = await totpStorage.load();
+    debugLogger.log('validateLogin: carregando secret do armazenamento', { uid });
+    const savedSecret = await totpStorage.load(uid);
+    
     if (!savedSecret) {
-      // TOTP não configurado; deixa passar (segurança progressiva)
+      debugLogger.log('validateLogin: secret não encontrada no armazenamento', { uid });
+      setError('Erro de configuração 2FA. Chave não encontrada.');
       setLoading(false);
-      return true;
+      return false;
     }
 
+    debugLogger.log('validateLogin: secret carregada', { secretTruncated: savedSecret.slice(0, 5) + '...' + savedSecret.slice(-5), secretLength: savedSecret.length });
+
     if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+      debugLogger.log('validateLogin: código inválido', { code, length: code.length });
       setError('Digite exatamente 6 dígitos.');
       setLoading(false);
       return false;
@@ -126,7 +137,7 @@ export function useTOTP(): UseTOTPReturn {
 
     await new Promise(r => setTimeout(r, 300));
     const valid = verifyCode(code, savedSecret);
-
+    debugLogger.log('validateLogin: resultado', { valid, code });
     if (!valid) {
       setError('Código inválido ou expirado. Tente o próximo código.');
     }
@@ -136,7 +147,6 @@ export function useTOTP(): UseTOTPReturn {
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
-
   return {
     step,
     secret,
