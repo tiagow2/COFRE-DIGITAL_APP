@@ -1,7 +1,7 @@
 // app/(app)/(tabs)/extrato.tsx
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, SafeAreaView, Alert } from 'react-native';
 import { useFinance } from '@/context/FinanceContext';
+import React, { useMemo, useState } from 'react';
+import { Alert, FlatList, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const CAT_BG: Record<string, string> = {
   'Alimentação': '#FEF3C7', 'Transporte': '#D1FAE5', 'Lazer': '#FCE7F3',
@@ -52,13 +52,13 @@ export default function ExtractScreen() {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <Text style={s.title}>Extrato</Text>
-        <TouchableOpacity onPress={() => Alert.alert('🎙️ Busca por voz', '"mostrar despesas de alimentação"\n\n(Integre @react-native-voice/voice para voz real)', [{ text: 'OK', onPress: () => setFilter('Alimentação') }])}>
-          <View style={s.voiceBtn}><Text style={{ fontSize: 20 }}>🎙️</Text></View>
+        <TouchableOpacity onPress={() => Alert.alert('Voice Search', '"show food expenses"\n\n(Integrate @react-native-voice/voice for real voice)', [{ text: 'OK', onPress: () => setFilter('Alimentação') }])}>
+          <View style={s.voiceBtn}><Text style={{ fontSize: 20 }}>Mic</Text></View>
         </TouchableOpacity>
       </View>
 
       <View style={s.searchRow}>
-        <Text style={{ fontSize: 16 }}>🔍</Text>
+        <Text style={{ fontSize: 16 }}>Search</Text>
         <TextInput style={s.searchInput} placeholder="Buscar transações..." placeholderTextColor="#9CA3AF" value={search} onChangeText={setSearch} />
         {search ? <TouchableOpacity onPress={() => setSearch('')}><Text style={{ color: '#9CA3AF' }}>✕</Text></TouchableOpacity> : null}
       </View>

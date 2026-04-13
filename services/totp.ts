@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import {
   generateSync,
   generateURI,
@@ -6,8 +6,7 @@ import {
   verifySync,
 } from 'otplib';
 import { debugLogger } from './debugLogger';
-
-const STORAGE_KEY = '@cofre_totp_secret';
+import { secureStorage } from './secureStorage';
 
 const TOTP_OPTS = {
   strategy: 'totp' as const,
@@ -85,7 +84,7 @@ export function verifyCode(token: string, secret: string): boolean {
     }
     
     debugLogger.log('verifyCode: resultado desconhecido', result);
-    return false;  // Qualquer outra coisa, nega
+    return false;  
   } catch (err) {
     debugLogger.log('Erro em verifyCode', err);
     return false;
@@ -99,9 +98,9 @@ export function generateCurrentCode(secret: string): string {
 export const totpStorage = {
   async save(uid: string, secret: string): Promise<void> {
     if (!uid) throw new Error('UID é obrigatório para salvar o TOTP');
-    const key = `${STORAGE_KEY}_${uid}`;
-    debugLogger.log('Salvando secret em AsyncStorage', { uid, key, secretLength: secret?.length });
-    await AsyncStorage.setItem(key, secret);
+    const key = `cofre_totp_secret_${uid}`;
+    debugLogger.log('Salvando secret em armazenamento seguro', { uid, key, secretLength: secret?.length });
+    await secureStorage.setItem(key, secret);
     debugLogger.log('Secret salva com sucesso', { uid });
   },
   
@@ -110,18 +109,18 @@ export const totpStorage = {
       debugLogger.log('load: UID vazio');
       return null;
     }
-    const key = `${STORAGE_KEY}_${uid}`;
-    debugLogger.log('Carregando secret do AsyncStorage', { uid, key });
-    const secret = await AsyncStorage.getItem(key);
+    const key = `cofre_totp_secret_${uid}`;
+    debugLogger.log('Carregando secret do armazenamento seguro', { uid, key });
+    const secret = await secureStorage.getItem<string>(key);
     debugLogger.log('Secret carregada', { uid, isNull: secret === null, length: secret?.length });
     return secret;
   },
   
   async remove(uid: string): Promise<void> {
     if (!uid) return;
-    const key = `${STORAGE_KEY}_${uid}`;
-    debugLogger.log('Removendo secret do AsyncStorage', { uid, key });
-    await AsyncStorage.removeItem(key);
+    const key = `cofre_totp_secret_${uid}`;
+    debugLogger.log('Removendo secret do armazenamento seguro', { uid, key });
+    await secureStorage.removeItem(key);
     debugLogger.log('Secret removida com sucesso', { uid });
   },
   
@@ -130,8 +129,8 @@ export const totpStorage = {
       debugLogger.log('isEnabled: UID vazio');
       return false;
     }
-    const key = `${STORAGE_KEY}_${uid}`;
-    const s = await AsyncStorage.getItem(key);
+    const key = `cofre_totp_secret_${uid}`;
+    const s = await secureStorage.getItem<string>(key);
     const enabled = s !== null && s.length > 0;
     debugLogger.log('Verificando se TOTP está ativo', { uid, enabled });
     return enabled;

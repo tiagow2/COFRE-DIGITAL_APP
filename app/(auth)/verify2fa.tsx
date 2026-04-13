@@ -4,11 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert,
-    KeyboardAvoidingView, Platform,
-    StyleSheet,
-    Text, TextInput, TouchableOpacity,
-    View,
+  ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform,
+  StyleSheet,
+  Text, TextInput, TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function Verify2FAScreen() {
@@ -81,7 +81,7 @@ export default function Verify2FAScreen() {
         <View style={s.container}>
 
           <View style={s.iconWrap}>
-            <Text style={{ fontSize: 44 }}>🔐</Text>
+            <Text style={{ fontSize: 44 }}>Lock</Text>
           </View>
           <Text style={s.title}>Verificação em 2 etapas</Text>
           <Text style={s.subtitle}>
@@ -114,7 +114,7 @@ export default function Verify2FAScreen() {
               returnKeyType="done"
               onSubmitEditing={handleVerify}
             />
-            {error ? <Text style={s.errorTxt}>⚠️ {error}</Text> : null}
+            {error ? <Text style={s.errorTxt}>Warning: {error}</Text> : null}
 
             <TouchableOpacity
               style={[s.btn, (loading || code.length < 6) && s.btnDisabled]}

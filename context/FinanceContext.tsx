@@ -1,6 +1,6 @@
 // context/FinanceContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureStorage } from '@/services/secureStorage';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 
 export type TxType = 'income' | 'expense';
@@ -79,11 +79,11 @@ const FinanceContext = createContext<FinanceContextType>({} as FinanceContextTyp
 
 const INITIAL: FinanceData = {
   transactions: [
-    { id: '1', type: 'expense', description: 'Supermercado Extra',    amount: 143.20, category: 'Alimentação', icon: '🛒', date: new Date().toISOString() },
-    { id: '2', type: 'income',  description: 'Salário',               amount: 6500.00, category: 'Receita',     icon: '💼', date: new Date(Date.now() - 86400000 * 5).toISOString() },
-    { id: '3', type: 'expense', description: 'Posto Shell',           amount: 180.00, category: 'Transporte',  icon: '⛽', date: new Date(Date.now() - 86400000 * 6).toISOString() },
-    { id: '4', type: 'expense', description: 'Netflix',               amount: 39.90,  category: 'Lazer',       icon: '🎬', date: new Date(Date.now() - 86400000 * 7).toISOString() },
-    { id: '5', type: 'expense', description: 'Farmácia São Paulo',    amount: 68.40,  category: 'Saúde',       icon: '💊', date: new Date(Date.now() - 86400000 * 8).toISOString() },
+    { id: '1', type: 'expense', description: 'Supermercado Extra',    amount: 143.20, category: 'Alimentação', icon: 'cart', date: new Date().toISOString() },
+    { id: '2', type: 'income',  description: 'Salário',               amount: 6500.00, category: 'Receita',     icon: 'briefcase', date: new Date(Date.now() - 86400000 * 5).toISOString() },
+    { id: '3', type: 'expense', description: 'Posto Shell',           amount: 180.00, category: 'Transporte',  icon: 'fuel', date: new Date(Date.now() - 86400000 * 6).toISOString() },
+    { id: '4', type: 'expense', description: 'Netflix',               amount: 39.90,  category: 'Lazer',       icon: 'film', date: new Date(Date.now() - 86400000 * 7).toISOString() },
+    { id: '5', type: 'expense', description: 'Farmácia São Paulo',    amount: 68.40,  category: 'Saúde',       icon: 'pill', date: new Date(Date.now() - 86400000 * 8).toISOString() },
   ],
   budgets: [
     { id: '1', category: 'Alimentação', limit: 1000, period: 'monthly', color: '#EF9F27' },
@@ -92,9 +92,9 @@ const INITIAL: FinanceData = {
     { id: '4', category: 'Saúde',       limit: 400,  period: 'monthly', color: '#378ADD' },
   ],
   goals: [
-    { id: '1', name: 'Viagem para Europa 🌍',   target: 15000, current: 10050, monthly: 500,  icon: '✈️',  color: '#1D9E75' },
-    { id: '2', name: 'Reserva de emergência 🏦', target: 30000, current: 9900,  monthly: 1000, icon: '🏦',  color: '#EF9F27' },
-    { id: '3', name: 'Notebook novo 💻',         target: 5000,  current: 900,   monthly: 300,  icon: '💻',  color: '#D85A30' },
+    { id: '1', name: 'Viagem para Europa',   target: 15000, current: 10050, monthly: 500,  icon: 'plane',  color: '#1D9E75' },
+    { id: '2', name: 'Reserva de emergência', target: 30000, current: 9900,  monthly: 1000, icon: 'bank',  color: '#EF9F27' },
+    { id: '3', name: 'Notebook novo',         target: 5000,  current: 900,   monthly: 300,  icon: 'laptop',  color: '#D85A30' },
   ],
   creditCards: [
     { id: '1', name: 'Nubank', lastDigits: '4521', limit: 5000, used: 1240, dueDate: '15/05/2026', color: '#6C35DE' },
@@ -123,18 +123,18 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     if (user) loadData();
   }, [user]);
 
-  const key = () => `@cofre_finance_${user?.uid}`;
+  const key = () => `cofre_finance_${user?.uid}`;
 
   const loadData = async () => {
     try {
-      const raw = await AsyncStorage.getItem(key());
+      const raw = await secureStorage.getItem<string>(key());
       if (raw) setData(JSON.parse(raw));
     } catch {}
     finally { setLoadingData(false); }
   };
 
   const persist = async (d: FinanceData) => {
-    try { await AsyncStorage.setItem(key(), JSON.stringify(d)); } catch {}
+    try { await secureStorage.setItem(key(), JSON.stringify(d)); } catch {}
   };
 
   const update = (updater: (d: FinanceData) => FinanceData) => {

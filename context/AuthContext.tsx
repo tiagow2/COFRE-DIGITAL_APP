@@ -1,7 +1,7 @@
 import { debugLogger } from '@/services/debugLogger';
 import { authService } from '@/services/firebase';
+import { secureStorage } from '@/services/secureStorage';
 import { totpStorage, verifyCode } from '@/services/totp';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -67,13 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: firebaseUser.email,
           };
           setUser(u);
-          await AsyncStorage.setItem('@cofre_user', JSON.stringify(u));
+          await secureStorage.setItem('cofre_user', u);
         }
       } else {
         setUser(null);
         setPendingUser(null);
         setTotpRequired(false);
-        await AsyncStorage.removeItem('@cofre_user');
+        await secureStorage.removeItem('cofre_user');
       }
 
       setLoading(false);
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: firebaseUser.email,
       };
       setUser(u);
-      await AsyncStorage.setItem('@cofre_user', JSON.stringify(u));
+      await secureStorage.setItem('cofre_user', JSON.stringify(u));
       return { success: true };
 
     } catch (e: any) {
@@ -151,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     debugLogger.log('confirmTOTP: código válido! Login bem-sucedido');
     const u: AuthUser = { ...pendingUser };
     setUser(u);
-    await AsyncStorage.setItem('@cofre_user', JSON.stringify(u));
+    await secureStorage.setItem('cofre_user', JSON.stringify(u));
     setTotpRequired(false);
     setPendingUser(null);
     return { success: true };
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: firebaseUser.email,
       };
       setUser(u);
-      await AsyncStorage.setItem('@cofre_user', JSON.stringify(u));
+      await secureStorage.setItem('cofre_user', JSON.stringify(u));
       return { success: true };
     } catch (e: any) {
       const msg = authService.getErrorMessage(e.code);
@@ -188,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setTotpRequired(false);
     setPendingUser(null);
-    await AsyncStorage.removeItem('@cofre_user');
+    await secureStorage.removeItem('cofre_user');
   };
 
   const resetPassword = async (email: string) => {

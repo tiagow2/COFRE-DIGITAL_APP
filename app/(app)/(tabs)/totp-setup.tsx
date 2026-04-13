@@ -47,7 +47,7 @@ export default function TOTPSetupScreen() {
   } = useTOTP();
 
   const [code, setCode] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false); // 🔥 CORREÇÃO: Controle da transição de tela
+  const [isVerifying, setIsVerifying] = useState(false); // FIX: Screen transition control
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -110,9 +110,9 @@ export default function TOTPSetupScreen() {
 
           <View style={s.infoCard}>
             <Text style={s.infoTitle}>Como funciona</Text>
-            <Text style={s.infoItem}>🔐  Um código novo é gerado a cada 30 segundos</Text>
-            <Text style={s.infoItem}>📱  Apenas quem tem seu celular consegue entrar</Text>
-            <Text style={s.infoItem}>🚫  Mesmo com a senha, sem o código não acessa</Text>
+            <Text style={s.infoItem}>Lock  A new code is generated every 30 seconds</Text>
+            <Text style={s.infoItem}>Mobile  Only the person with your phone can enter</Text>
+            <Text style={s.infoItem}>Block  Even with the password, without the code you cannot access</Text>
           </View>
 
           <TouchableOpacity style={s.dangerBtn} onPress={handleDisable} disabled={loading}>
@@ -131,7 +131,7 @@ export default function TOTPSetupScreen() {
       <SafeAreaView style={s.safe}>
         <Animated.View style={[s.scroll, { opacity: fadeAnim, flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }]}>
           <View style={s.successIcon}>
-            <Text style={{ fontSize: 42 }}>🔐</Text>
+            <Text style={{ fontSize: 42 }}>Lock</Text>
           </View>
           <Text style={s.successTitle}>2FA ativado!</Text>
           <Text style={s.successDesc}>
@@ -147,7 +147,7 @@ export default function TOTPSetupScreen() {
   }
 
   // ─── Estado: exibir QR Code ────────────────────────────────────────────────
-  // 🔥 CORREÇÃO: Só mostra o QR Code se isVerifying for falso
+  // FIX: Only show QR Code if isVerifying is false
   if (step === 'qrcode' && !isVerifying) {
     return (
       <SafeAreaView style={s.safe}>
@@ -201,10 +201,10 @@ export default function TOTPSetupScreen() {
                   style={s.copyBtn}
                   onPress={() => {
                     Clipboard.setString(secret);
-                    Alert.alert('✅ Copiado', 'Chave copiada para a área de transferência.');
+                    Alert.alert('OK Copied', 'Key copied to clipboard.');
                   }}
                 >
-                  <Text style={s.copyBtnTxt}>📋 Copiar chave</Text>
+                  <Text style={s.copyBtnTxt}>Copy key</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -220,7 +220,7 @@ export default function TOTPSetupScreen() {
                 fadeAnim.setValue(0); 
                 setCode(''); 
                 clearError(); 
-                setIsVerifying(true); // 🔥 CORREÇÃO: Transforma a tela!
+                setIsVerifying(true); // FIX: Transform the screen!
               }} 
             >
               <Text style={s.primaryTxt}>Já escaniei →</Text>
@@ -280,9 +280,9 @@ function VerifyStep({
 
           <View style={s.infoCard}>
             <Text style={s.infoTitle}>O que você vai precisar</Text>
-            <Text style={s.infoItem}>📱  App Google Authenticator instalado</Text>
-            <Text style={s.infoItem}>📷  Câmera para escanear o QR Code</Text>
-            <Text style={s.infoItem}>⏱️  Cerca de 2 minutos</Text>
+            <Text style={s.infoItem}>Mobile  Google Authenticator app installed</Text>
+            <Text style={s.infoItem}>Camera  Camera to scan the QR Code</Text>
+            <Text style={s.infoItem}>Clock  About 2 minutes</Text>
           </View>
 
           <TouchableOpacity style={s.primaryBtn} onPress={onStartSetup}>

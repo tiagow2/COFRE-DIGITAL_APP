@@ -44,7 +44,7 @@ export default function TabLayout() {
 
       <Tabs.Screen name="totp-setup" options={{ title: '2FA' }} />
       
-      <Tabs.Screen name="debug" options={{ title: '🐛 Debug', href: null }} />
+      <Tabs.Screen name="debug" options={{ title: 'Debug', href: null }} />
 
     </Tabs>
   );

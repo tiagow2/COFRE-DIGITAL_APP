@@ -1,13 +1,21 @@
 // app/(app)/(tabs)/index.tsx
 
-import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, SafeAreaView, StatusBar,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
 import { useFinance } from '@/context/FinanceContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 const CATEGORIES = [
   { name: 'Alimentação', icon: 'A', bg: '#FEF3C7' },
@@ -90,11 +98,11 @@ export default function HomeScreen() {
         {/* Quick Actions */}
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionBtn} onPress={() => { setTxType('expense'); setModal(true); }}>
-            <Text style={styles.actionIcon}>➖</Text>
+            <Text style={styles.actionIcon}>-</Text>
             <Text style={styles.actionLabel}>Despesa</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionBtn, styles.actionBtnGreen]} onPress={() => { setTxType('income'); setModal(true); }}>
-            <Text style={styles.actionIcon}>➕</Text>
+            <Text style={styles.actionIcon}>+</Text>
             <Text style={styles.actionLabel}>Receita</Text>
           </TouchableOpacity>
         </View>

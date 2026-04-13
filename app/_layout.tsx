@@ -49,7 +49,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1565C0' }}>
-        <Text style={{ fontSize: 48, marginBottom: 16 }}>🔐</Text>
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>Lock</Text>
         <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 24 }}>Cofre Digital</Text>
         <ActivityIndicator size="large" color="#fff" />
       </View>
