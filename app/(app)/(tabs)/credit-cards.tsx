@@ -1,8 +1,10 @@
 import { CreditCard, useFinance } from "@/context/FinanceContext";
+import { getCardLimitInfo } from "@/utils/cardLimits";
 import { parseCurrencyInput } from "@/utils/currency";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useFinancialTheme } from "@/hooks/useFinancialTheme";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -23,6 +25,7 @@ const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curren
 export default function CreditCardsScreen() {
   const router = useRouter();
   const { creditCards, addCreditCard, loadingData } = useFinance();
+  const theme = useFinancialTheme();
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [newCard, setNewCard] = useState({
@@ -85,11 +88,8 @@ export default function CreditCardsScreen() {
   };
 
   const CardItem = ({ card }: { card: CreditCard }) => {
-    const limitAmount = (card as any).limitAmount || card.limit;
-    const usage = limitAmount > 0 ? Math.min((card.used / limitAmount) * 100, 100) : 0;
-    const available = Math.max(limitAmount - card.used, 0);
+    const limitInfo = getCardLimitInfo(card);
     const gradient = [card.color || CARD_COLORS[0], "#111827"] as const;
-    const statusColor = usage > 85 ? "#DC2626" : usage > 60 ? "#D97706" : "#059669";
 
     return (
       <View style={s.cardBlock}>
@@ -113,7 +113,7 @@ export default function CreditCardsScreen() {
           <View style={s.virtualBottom}>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={s.virtualLabel}>Disponivel</Text>
-              <Text style={s.virtualValue} numberOfLines={1} adjustsFontSizeToFit>{fmt(available)}</Text>
+              <Text style={s.virtualValue} numberOfLines={1} adjustsFontSizeToFit>{fmt(limitInfo.available)}</Text>
             </View>
             <View style={s.duePill}>
               <Text style={s.duePillText} numberOfLines={1}>{card.dueDate ? `Vence ${card.dueDate}` : "Sem venc."}</Text>
@@ -124,14 +124,20 @@ export default function CreditCardsScreen() {
         <View style={s.usagePanel}>
           <View style={s.usageHeader}>
             <Text style={s.usageTitle}>Uso do limite</Text>
-            <Text style={[s.usagePct, { color: statusColor }]}>{usage.toFixed(0)}%</Text>
+            <View style={s.usageRight}>
+              <View style={[s.statusPill, { backgroundColor: limitInfo.softColor }]}>
+                <Text style={[s.statusPillText, { color: limitInfo.color }]}>{limitInfo.label}</Text>
+              </View>
+              <Text style={[s.usagePct, { color: limitInfo.color }]}>{limitInfo.percentage}%</Text>
+            </View>
           </View>
           <View style={s.progressBar}>
-            <View style={[s.progressFill, { width: `${usage}%`, backgroundColor: statusColor }]} />
+            <View style={[s.progressFill, { width: `${limitInfo.percentage}%`, backgroundColor: limitInfo.color }]} />
           </View>
           <View style={s.usageFooter}>
-            <Text style={s.usageText} numberOfLines={1}>Usado: {fmt(card.used)}</Text>
-            <Text style={s.usageText} numberOfLines={1}>Limite: {fmt(limitAmount)}</Text>
+            <Text style={s.usageText} numberOfLines={1}>Fatura: {fmt(limitInfo.used)}</Text>
+            <Text style={s.usageText} numberOfLines={1}>Livre: {fmt(limitInfo.available)}</Text>
+            <Text style={s.usageText} numberOfLines={1}>Limite: {fmt(limitInfo.limit)}</Text>
           </View>
         </View>
       </View>
@@ -145,7 +151,7 @@ export default function CreditCardsScreen() {
           <Ionicons name="arrow-back" size={21} color="#111827" />
         </TouchableOpacity>
         <Text style={s.title} numberOfLines={1}>Cartoes</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowAddModal(true)}>
+        <TouchableOpacity style={[s.addBtn, { backgroundColor: theme.accent }]} onPress={() => setShowAddModal(true)}>
           <Ionicons name="add" size={18} color="#fff" />
           <Text style={s.addBtnText}>Novo</Text>
         </TouchableOpacity>
@@ -160,7 +166,7 @@ export default function CreditCardsScreen() {
           <Text style={s.emptyText}>
             Adicione seus cartoes para acompanhar limite, vencimento e uso em um so lugar.
           </Text>
-          <TouchableOpacity style={s.emptyBtn} onPress={() => setShowAddModal(true)}>
+          <TouchableOpacity style={[s.emptyBtn, { backgroundColor: theme.accent }]} onPress={() => setShowAddModal(true)}>
             <Ionicons name="add" size={18} color="#fff" />
             <Text style={s.emptyBtnText}>Adicionar cartao</Text>
           </TouchableOpacity>
@@ -239,7 +245,7 @@ export default function CreditCardsScreen() {
               ))}
             </View>
 
-            <TouchableOpacity style={[s.submitBtn, (submitting || loadingData) && s.submitBtnDisabled]} onPress={handleAddCard} disabled={submitting || loadingData}>
+            <TouchableOpacity style={[s.submitBtn, { backgroundColor: theme.accent }, (submitting || loadingData) && s.submitBtnDisabled]} onPress={handleAddCard} disabled={submitting || loadingData}>
               {submitting ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Salvar cartao</Text>}
             </TouchableOpacity>
           </TouchableOpacity>
@@ -339,11 +345,14 @@ const s = StyleSheet.create({
   },
   usageHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
   usageTitle: { fontSize: 13, color: "#374151", fontWeight: "700" },
+  usageRight: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 },
+  statusPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  statusPillText: { fontSize: 10, fontWeight: "800" },
   usagePct: { fontSize: 13, fontWeight: "800" },
   progressBar: { height: 8, backgroundColor: "#EEF2F7", borderRadius: 999, overflow: "hidden", marginTop: 10 },
   progressFill: { height: "100%", borderRadius: 999 },
-  usageFooter: { flexDirection: "row", justifyContent: "space-between", gap: 10, marginTop: 10 },
-  usageText: { flex: 1, minWidth: 0, fontSize: 12, color: "#6B7280", fontWeight: "600" },
+  usageFooter: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 10, marginTop: 10 },
+  usageText: { flexGrow: 1, minWidth: 92, fontSize: 12, color: "#6B7280", fontWeight: "600" },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 34 },
   emptyIcon: {
     width: 72,

@@ -109,6 +109,7 @@ export default function TabLayout() {
       <Tabs.Screen name="profile-edit" options={{ href: null }} />
       <Tabs.Screen name="simulator"    options={{ href: null }} />
       <Tabs.Screen name="challenges"   options={{ href: null }} />
+      <Tabs.Screen name="loans"        options={{ href: null }} />
       <Tabs.Screen name="debug"        options={{ href: null }} />
     </Tabs>
   );

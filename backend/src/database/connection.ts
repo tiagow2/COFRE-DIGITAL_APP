@@ -132,6 +132,15 @@ export async function initializeDatabase() {
         UNIQUE(city, category)
       );
 
+      CREATE TABLE IF NOT EXISTS regional_contributions (
+        id UUID PRIMARY KEY,
+        city VARCHAR(255) NOT NULL,
+        category VARCHAR(100) NOT NULL,
+        total_expense DECIMAL(10, 2) NOT NULL,
+        period_month VARCHAR(7) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
       CREATE INDEX IF NOT EXISTS idx_budgets_user_id ON budgets(user_id);
@@ -140,6 +149,7 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
       CREATE INDEX IF NOT EXISTS idx_sync_logs_user_id ON sync_logs(user_id);
       CREATE INDEX IF NOT EXISTS idx_regional_avg_city_category ON regional_averages(city, category);
+      CREATE INDEX IF NOT EXISTS idx_regional_contributions_lookup ON regional_contributions(city, category, period_month);
     `);
 
     // Migrations — adicionar colunas se não existirem

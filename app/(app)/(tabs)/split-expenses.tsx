@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFinancialTheme } from '@/hooks/useFinancialTheme';
 import { parseCurrencyInput } from '@/utils/currency';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -13,6 +14,7 @@ interface Group { id: string; name: string; members: string[]; expenses: Expense
 
 export default function SplitExpensesScreen() {
   const router = useRouter();
+  const theme = useFinancialTheme();
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupModal, setGroupModal] = useState(false);
   const [expenseModal, setExpenseModal] = useState<Group | null>(null);
@@ -66,7 +68,7 @@ export default function SplitExpensesScreen() {
           <Ionicons name="arrow-back" size={22} color="#111827" />
         </TouchableOpacity>
         <Text style={s.title} numberOfLines={1}>Divisão de Gastos</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setGroupModal(true); }}>
+        <TouchableOpacity style={[s.addBtn, { backgroundColor: theme.accent }]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setGroupModal(true); }}>
           <Ionicons name="add" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -127,7 +129,7 @@ export default function SplitExpensesScreen() {
             <TextInput style={s.input} placeholder="Ex: República, Viagem, Casamento..." placeholderTextColor="#9CA3AF" value={gName} onChangeText={setGName} />
             <Text style={s.fieldLabel}>Membros (separados por vírgula)</Text>
             <TextInput style={[s.input, { marginBottom: 24 }]} placeholder="Ana, Carlos, Maria..." placeholderTextColor="#9CA3AF" value={members} onChangeText={setMembers} />
-            <TouchableOpacity style={s.saveBtn} onPress={handleCreateGroup}>
+            <TouchableOpacity style={[s.saveBtn, { backgroundColor: theme.accent }]} onPress={handleCreateGroup}>
               <Text style={s.saveBtnTxt}>Criar grupo</Text>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -152,7 +154,7 @@ export default function SplitExpensesScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            <TouchableOpacity style={s.saveBtn} onPress={handleAddExpense}>
+            <TouchableOpacity style={[s.saveBtn, { backgroundColor: theme.accent }]} onPress={handleAddExpense}>
               <Text style={s.saveBtnTxt}>Adicionar despesa</Text>
             </TouchableOpacity>
           </TouchableOpacity>

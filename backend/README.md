@@ -71,7 +71,7 @@ Headers:
 
 **GET /api/regional-averages?city=São Paulo&category=Alimentação**
 
-Retorna a média de gastos por categoria para uma cidade (dados anônimos).
+Retorna a media de gastos por categoria para uma cidade usando somente amostras anonimas agregadas.
 
 Response:
 ```json
@@ -81,20 +81,22 @@ Response:
 }
 ```
 
-### Localização do Usuário
+### Contribuição Regional Anônima
 
-**POST /api/user-location**
+**POST /api/regional-contribution**
 
-Registra a cidade do usuário para cálculo de médias.
+Registra uma amostra anonima para calculo de medias regionais. Nao recebe Firebase UID, e-mail, nome, ID de dispositivo nem transacoes individuais.
 
 ```json
 {
-  "city": "São Paulo"
+  "city": "Sao Paulo",
+  "category": "Alimentacao",
+  "totalExpense": 950.75,
+  "periodMonth": "2026-06"
 }
 ```
 
-Headers:
-- `X-User-ID`: ID do usuário
+O app envia somente cidade via GPS, categoria e total mensal agregado.
 
 ### Health Check
 

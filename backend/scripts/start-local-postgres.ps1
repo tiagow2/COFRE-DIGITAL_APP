@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $postgresBin = "C:\Program Files\PostgreSQL\18\bin"
 $dataDir = Resolve-Path (Join-Path $PSScriptRoot "..\.postgres-data") -ErrorAction SilentlyContinue
@@ -15,7 +15,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $exists = & (Join-Path $postgresBin "psql.exe") -p 5433 -U cofre -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'cofre_digital';"
-if ($exists.Trim() -ne "1") {
+$existsText = ($exists | Out-String).Trim()
+if ($existsText -ne "1") {
   & (Join-Path $postgresBin "createdb.exe") -p 5433 -U cofre cofre_digital
 }
 

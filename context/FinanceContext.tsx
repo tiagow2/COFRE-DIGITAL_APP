@@ -4,6 +4,7 @@ import { API_ORIGIN } from '@/services/apiConfig';
 import { debugLogger } from '@/services/debugLogger';
 import { FinanceRepository } from '@/services/repository';
 import { getSyncService, initializeSyncService } from '@/services/sync';
+import { canUseCardAmount, getCardLimitInfo, type CardLimitInfo } from '@/utils/cardLimits';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 
@@ -101,6 +102,11 @@ interface FinanceContextType extends FinanceData {
   getMonthlyIncome: () => number;
   getMonthlyExpenses: () => number;
   getBudgetStatus: (budget: Budget) => { spent: number; pct: number; remaining: number };
+  getCardUsedAmount: (cardId: string) => number;
+  getCardAvailableLimit: (cardId: string) => number;
+  getCardUsagePercentage: (cardId: string) => number;
+  getCardLimitStatus: (cardId: string) => CardLimitInfo;
+  canUseCardForTransaction: (cardId: string, amount: number) => { ok: boolean; available: number; afterUsePercentage: number };
   suggestCategory: (description: string) => string;
   isOnline: boolean;
   syncStatus: { pendingCount: number };
@@ -412,6 +418,24 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     return { spent, pct, remaining: b.limit - spent };
   };
 
+  const getCardById = (cardId: string) =>
+    data.creditCards.find((card) => card.id === cardId);
+
+  const getCardLimitStatus = (cardId: string) =>
+    getCardLimitInfo(getCardById(cardId));
+
+  const getCardUsedAmount = (cardId: string) =>
+    getCardLimitStatus(cardId).used;
+
+  const getCardAvailableLimit = (cardId: string) =>
+    getCardLimitStatus(cardId).available;
+
+  const getCardUsagePercentage = (cardId: string) =>
+    getCardLimitStatus(cardId).percentage;
+
+  const canUseCardForTransaction = (cardId: string, amount: number) =>
+    canUseCardAmount(getCardById(cardId), amount);
+
   const suggestCategory = (description: string): string => {
     const d = description.toLowerCase();
     for (const [cat, kws] of Object.entries(CATEGORY_KEYWORDS)) {
@@ -440,6 +464,11 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         getMonthlyIncome,
         getMonthlyExpenses,
         getBudgetStatus,
+        getCardUsedAmount,
+        getCardAvailableLimit,
+        getCardUsagePercentage,
+        getCardLimitStatus,
+        canUseCardForTransaction,
         suggestCategory,
         isOnline,
         syncStatus,

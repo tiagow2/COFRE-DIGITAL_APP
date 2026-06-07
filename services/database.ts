@@ -10,6 +10,7 @@ export interface Database {
 }
 
 let db: SQLite.SQLiteDatabase | null = null;
+let initPromise: Promise<Database> | null = null;
 
 function sanitizeParam(value: unknown): string | number | boolean | null | Uint8Array {
   if (value === undefined) return null;
@@ -26,18 +27,29 @@ function sanitizeParams(params?: unknown[]) {
 }
 
 export async function initializeDatabase(): Promise<Database> {
-  try {
-    if (db) return wrapDatabase(db);
+  if (initPromise) return initPromise;
 
-    debugLogger.log('Inicializando SQLite', {});
-    db = await SQLite.openDatabaseAsync('cofre_digital.db');
-    await createTables(db);
-    debugLogger.log('SQLite inicializado com sucesso', {});
-    return wrapDatabase(db);
-  } catch (error) {
-    debugLogger.log('Erro ao inicializar SQLite', { error: (error as Error).message });
-    throw error;
-  }
+  initPromise = (async () => {
+    try {
+      if (!db) {
+        debugLogger.log('Inicializando SQLite', {});
+        db = await SQLite.openDatabaseAsync('cofre_digital.db');
+        debugLogger.log('Database conectado, criando tabelas...', {});
+        await createTables(db);
+        debugLogger.log('SQLite inicializado com sucesso', {});
+      } else {
+        debugLogger.log('SQLite já estava inicializado', {});
+      }
+      return wrapDatabase(db!);
+    } catch (error) {
+      db = null;
+      initPromise = null;
+      debugLogger.log('Erro ao inicializar SQLite', { error: (error as Error).message, stack: (error as Error).stack });
+      throw error;
+    }
+  })();
+
+  return initPromise;
 }
 
 async function createTables(database: SQLite.SQLiteDatabase) {
@@ -281,6 +293,17 @@ async function runMigrations(database: SQLite.SQLiteDatabase) {
   await ensureColumn(database, 'monitored_locations', 'active', 'INTEGER DEFAULT 1');
   await ensureColumn(database, 'monitored_locations', 'last_notified_at', 'TEXT');
   await ensureColumn(database, 'monitored_locations', 'created_at', "TEXT DEFAULT ''");
+
+  await ensureColumn(database, 'loans', 'user_id', "TEXT DEFAULT 'unknown'");
+  await ensureColumn(database, 'loans', 'total_amount', "REAL DEFAULT 0");
+  await ensureColumn(database, 'loans', 'paid_installments', "INTEGER DEFAULT 0");
+  await ensureColumn(database, 'loans', 'installment_value', "REAL DEFAULT 0");
+  await ensureColumn(database, 'loans', 'created_at', "TEXT DEFAULT CURRENT_TIMESTAMP");
+
+  await copyColumnIfAvailable(database, 'loans', 'userId', 'user_id');
+  await copyColumnIfAvailable(database, 'loans', 'total', 'total_amount');
+  await copyColumnIfAvailable(database, 'loans', 'current', 'paid_installments');
+  await copyColumnIfAvailable(database, 'loans', 'monthly', 'installment_value');
 }
 
 function wrapDatabase(database: SQLite.SQLiteDatabase): Database {
@@ -300,7 +323,7 @@ function wrapDatabase(database: SQLite.SQLiteDatabase): Database {
       try {
         const safeParams = sanitizeParams(params);
         if (safeParams.length > 0) {
-          await (database.runAsync as any)(sql, ...safeParams);
+          await (database.runAsync as any)(sql, safeParams);
         } else {
           await database.execAsync(sql);
         }
@@ -314,7 +337,7 @@ function wrapDatabase(database: SQLite.SQLiteDatabase): Database {
       try {
         const safeParams = sanitizeParams(params);
         return safeParams.length > 0
-          ? await (database.getAllAsync as any)(sql, ...safeParams)
+          ? await (database.getAllAsync as any)(sql, safeParams)
           : await database.getAllAsync(sql);
       } catch (error) {
         debugLogger.log('Erro ao buscar todos', { sql, error: (error as Error).message });
@@ -326,7 +349,7 @@ function wrapDatabase(database: SQLite.SQLiteDatabase): Database {
       try {
         const safeParams = sanitizeParams(params);
         const result = safeParams.length > 0
-          ? await (database.getAllAsync as any)(sql, ...safeParams)
+          ? await (database.getAllAsync as any)(sql, safeParams)
           : await database.getAllAsync(sql);
         return result.length > 0 ? result[0] : null;
       } catch (error) {
@@ -339,7 +362,7 @@ function wrapDatabase(database: SQLite.SQLiteDatabase): Database {
       try {
         const safeParams = sanitizeParams(params);
         return safeParams.length > 0
-          ? await (database.runAsync as any)(sql, ...safeParams)
+          ? await (database.runAsync as any)(sql, safeParams)
           : await database.runAsync(sql);
       } catch (error) {
         debugLogger.log('Erro ao executar comando', { sql, error: (error as Error).message });

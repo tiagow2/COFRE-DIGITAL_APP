@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useFinancialTheme } from '@/hooks/useFinancialTheme';
 import { parseCurrencyInput } from '@/utils/currency';
 
 export default function SimulatorScreen() {
   const router = useRouter();
+  const theme = useFinancialTheme();
   
   const [initialAmount, setInitialAmount] = useState('1000');
   const [monthlyDeposit, setMonthlyDeposit] = useState('200');
@@ -46,6 +48,9 @@ export default function SimulatorScreen() {
 
   const fmt = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const bestValue = results ? Math.max(results.poupanca, results.cdb, results.tesouro) : 0;
+  const isBest = (val: number) => val === bestValue;
 
   return (
     <SafeAreaView style={s.safe}>
@@ -87,7 +92,7 @@ export default function SimulatorScreen() {
             keyboardType="numeric" 
           />
 
-          <TouchableOpacity style={s.btn} onPress={calculate}>
+          <TouchableOpacity style={[s.btn, { backgroundColor: theme.accent }]} onPress={calculate}>
             <Text style={s.btnTxt}>Calcular Rendimento</Text>
           </TouchableOpacity>
         </View>
@@ -102,7 +107,7 @@ export default function SimulatorScreen() {
                 <Ionicons name="wallet-outline" size={20} color="#EF4444" />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.resName} numberOfLines={1}>Poupança</Text>
+                <Text style={s.resName} numberOfLines={1}>Poupança {isBest(results.poupanca) && '🏆'}</Text>
                 <Text style={s.resYield} numberOfLines={1}>Rendimento: +{fmt(results.poupanca - results.totalInvested)}</Text>
               </View>
               <Text style={[s.resVal, { color: '#EF4444' }]} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit>{fmt(results.poupanca)}</Text>
@@ -113,7 +118,7 @@ export default function SimulatorScreen() {
                 <Ionicons name="trending-up-outline" size={20} color="#3B82F6" />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.resName} numberOfLines={1}>CDB (100% CDI)</Text>
+                <Text style={s.resName} numberOfLines={1}>CDB (100% CDI) {isBest(results.cdb) && '🏆'}</Text>
                 <Text style={s.resYield} numberOfLines={1}>Rendimento: +{fmt(results.cdb - results.totalInvested)}</Text>
               </View>
               <Text style={[s.resVal, { color: '#3B82F6' }]} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit>{fmt(results.cdb)}</Text>
@@ -124,7 +129,7 @@ export default function SimulatorScreen() {
                 <Ionicons name="shield-checkmark-outline" size={20} color="#10B981" />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.resName} numberOfLines={1}>Tesouro Direto</Text>
+                <Text style={s.resName} numberOfLines={1}>Tesouro Direto {isBest(results.tesouro) && '🏆'}</Text>
                 <Text style={s.resYield} numberOfLines={1}>Rendimento: +{fmt(results.tesouro - results.totalInvested)}</Text>
               </View>
               <Text style={[s.resVal, { color: '#10B981' }]} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit>{fmt(results.tesouro)}</Text>
@@ -147,15 +152,15 @@ const s = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700', color: '#111827', flex: 1, minWidth: 0, textAlign: 'center' },
   content: { padding: 20, paddingBottom: 140 },
   description: { fontSize: 15, color: '#6B7280', marginBottom: 20, lineHeight: 22 },
-  card: { backgroundColor: '#fff', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#F3F4F6', marginBottom: 24 },
+  card: { backgroundColor: '#fff', padding: 24, borderRadius: 32, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2, marginBottom: 24 },
   label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, padding: 14, fontSize: 16, backgroundColor: '#F9FAFB', marginBottom: 16, color: '#111827' },
-  btn: { backgroundColor: '#6366F1', padding: 16, borderRadius: 16, alignItems: 'center', marginTop: 8 },
+  input: { borderWidth: 0, backgroundColor: '#F1F5F9', borderRadius: 16, padding: 16, fontSize: 16, marginBottom: 16, color: '#111827', fontWeight: '600' },
+  btn: { backgroundColor: '#111827', padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 8 },
   btnTxt: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  resultsCard: { backgroundColor: '#fff', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#F3F4F6' },
+  resultsCard: { backgroundColor: '#fff', padding: 24, borderRadius: 32, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
   resTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 4, minWidth: 0 },
   invested: { fontSize: 12, color: '#6B7280', marginBottom: 20, flexShrink: 1, minWidth: 0 },
-  resItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', overflow: 'hidden', minWidth: 0 },
+  resItem: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', overflow: 'hidden', minWidth: 0 },
   resIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   resName: { fontSize: 13, fontWeight: '600', color: '#111827', flexShrink: 1, minWidth: 0 },
   resYield: { fontSize: 11, color: '#6B7280', marginTop: 2, flexShrink: 1, minWidth: 0 },

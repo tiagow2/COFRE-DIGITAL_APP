@@ -198,7 +198,7 @@ export default function SettingsScreen() {
             <TextInput style={s.input} secureTextEntry placeholder="Mínimo 8 caracteres" placeholderTextColor="#9CA3AF" value={masterPass} onChangeText={setMasterPass} />
             <Text style={s.fieldLabel}>Confirmar senha</Text>
             <TextInput style={[s.input, { marginBottom: 24 }]} secureTextEntry placeholder="Repita a senha" placeholderTextColor="#9CA3AF" value={masterConf} onChangeText={setMasterConf} />
-            <TouchableOpacity style={s.submitBtn} onPress={saveMaster}>
+            <TouchableOpacity style={[s.submitBtn, { backgroundColor: theme.accent }]} onPress={saveMaster}>
               <Text style={s.submitTxt}>Salvar Senha Mestra</Text>
             </TouchableOpacity>
           </TouchableOpacity>

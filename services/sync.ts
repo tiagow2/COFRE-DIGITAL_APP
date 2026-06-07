@@ -133,12 +133,7 @@ export class SyncService {
       }
 
       const response = await fetch(
-        `${this.config.apiUrl}/api/regional-averages?city=${encodeURIComponent(city)}&category=${encodeURIComponent(category)}`,
-        {
-          headers: {
-            'X-User-ID': this.config.userId,
-          },
-        }
+        `${this.config.apiUrl}/api/regional-averages?city=${encodeURIComponent(city)}&category=${encodeURIComponent(category)}`
       );
 
       if (!response.ok) {

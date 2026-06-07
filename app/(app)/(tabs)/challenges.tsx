@@ -7,6 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { useFinance } from '@/context/FinanceContext';
 import { useFinancialTheme } from '@/hooks/useFinancialTheme';
 import { parseCurrencyInput } from '@/utils/currency';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ChallengesScreen() {
   const router = useRouter();
@@ -131,13 +132,16 @@ export default function ChallengesScreen() {
         )}
 
         {challenges.filter(c => c.status === 'completed').map(c => (
-          <View key={c.id} style={[s.card, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
-            <View style={s.cardHeader}>
-              <Text style={[s.cardTitle, { color: '#92400E' }]} numberOfLines={1} ellipsizeMode="tail">{c.title}</Text>
-              <Ionicons name="medal" size={24} color="#D97706" />
+          <LinearGradient key={c.id} colors={['#FDE68A', '#F59E0B']} start={{x:0, y:0}} end={{x:1, y:1}} style={s.medalCard}>
+            <View style={s.medalIconWrap}>
+              <Text style={{ fontSize: 36 }}>🏅</Text>
             </View>
-            <Text style={[s.cardProgress, { color: '#B45309' }]}>Desafio Concluído! Parabéns!</Text>
-          </View>
+            <View style={{ flex: 1, marginLeft: 16 }}>
+              <Text style={s.medalCardTitle} numberOfLines={1} ellipsizeMode="tail">{c.title}</Text>
+              <Text style={s.medalCardProgress}>Conquista Desbloqueada!</Text>
+            </View>
+            <Ionicons name="sparkles" size={28} color="#FFFBEB" style={{ opacity: 0.7 }} />
+          </LinearGradient>
         ))}
 
         <View style={{ height: 100 }} />
@@ -201,19 +205,23 @@ const s = StyleSheet.create({
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#F3F4F6' },
   title: { fontSize: 16, fontWeight: '700', color: '#111827', flexShrink: 1, minWidth: 0 },
   content: { padding: 20, paddingBottom: 140 },
-  statsCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBEB', padding: 16, borderRadius: 20, marginBottom: 24, borderWidth: 1, borderColor: '#FEF3C7' },
+  statsCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 20, borderRadius: 28, marginBottom: 28, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
   medalWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   statsTitle: { fontSize: 15, fontWeight: '700', color: '#92400E' },
   statsDesc: { fontSize: 12, color: '#B45309', marginTop: 4, lineHeight: 16, flexShrink: 1, minWidth: 0 },
   sectionHeader: { marginBottom: 12 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
   empty: { color: '#6B7280', fontSize: 14, fontStyle: 'italic', marginBottom: 16 },
-  card: { backgroundColor: '#fff', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#F3F4F6', marginBottom: 16 },
+  card: { backgroundColor: '#fff', padding: 24, borderRadius: 28, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2, marginBottom: 16 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, overflow: 'hidden', minWidth: 0 },
-  cardTitle: { fontSize: 14, fontWeight: '600', color: '#111827', flexShrink: 1, minWidth: 0 },
-  cardProgress: { fontSize: 12, color: '#6B7280', marginBottom: 12, flexShrink: 1, minWidth: 0 },
-  progBg: { height: 8, backgroundColor: '#F3F4F6', borderRadius: 4, marginBottom: 16 },
-  progFill: { height: '100%', borderRadius: 4 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#111827', flexShrink: 1, minWidth: 0 },
+  cardProgress: { fontSize: 13, color: '#6B7280', marginBottom: 16, flexShrink: 1, minWidth: 0 },
+  progBg: { height: 10, backgroundColor: '#F1F5F9', borderRadius: 5, marginBottom: 20 },
+  progFill: { height: '100%', borderRadius: 5 },
+  medalCard: { flexDirection: 'row', alignItems: 'center', padding: 24, borderRadius: 28, marginBottom: 16, shadowColor: '#F59E0B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
+  medalIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(255,255,255,0.4)', alignItems: 'center', justifyContent: 'center' },
+  medalCardTitle: { fontSize: 17, fontWeight: '800', color: '#78350F', marginBottom: 4 },
+  medalCardProgress: { fontSize: 13, color: '#92400E', fontWeight: '600' },
   contribBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#EEF2FF', borderRadius: 12 },
   contribBtnTxt: { color: '#4F46E5', fontWeight: '600', fontSize: 13 },
   fab: { position: 'absolute', right: 24, bottom: 24, width: 60, height: 60, borderRadius: 20, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', elevation: 8 },

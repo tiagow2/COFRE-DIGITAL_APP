@@ -162,71 +162,94 @@ export class SyncService {
     );
   }
 
-  async getRegionalAverages(city: string, category: string): Promise<any> {
-    try {
-      let result = await query(
-        `SELECT avg_expense, user_count FROM regional_averages WHERE city = $1 AND category = $2`,
-        [city, category]
+  private currentPeriodMonth(): string {
+    return new Date().toISOString().slice(0, 7);
+  }
+
+  private sanitizePeriodMonth(periodMonth?: string): string {
+    return /^\d{4}-\d{2}$/.test(String(periodMonth ?? ''))
+      ? String(periodMonth)
+      : this.currentPeriodMonth();
+  }
+
+  private async refreshRegionalAverage(city: string, category: string, periodMonth: string): Promise<any> {
+    const result = await query(
+      `SELECT
+         AVG(total_expense) as avg_expense,
+         COUNT(*) as user_count
+       FROM regional_contributions
+       WHERE city = $1 AND category = $2 AND period_month = $3`,
+      [city, category, periodMonth]
+    );
+
+    const row = result.rows[0];
+    const avgExpense = parseFloat(row?.avg_expense ?? 0);
+    const userCount = parseInt(row?.user_count ?? 0, 10);
+
+    if (userCount > 0) {
+      await query(
+        `INSERT INTO regional_averages (id, city, category, avg_expense, user_count, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())
+         ON CONFLICT (city, category) DO UPDATE SET avg_expense = $4, user_count = $5, updated_at = NOW()`,
+        [uuidv4(), city, category, avgExpense, userCount]
       );
+    }
 
-      if (result.rows.length === 0) {
-        result = await query(
-          `SELECT 
-             AVG(user_expense.total) as avg_expense,
-             COUNT(*) as user_count
-           FROM (
-             SELECT t.user_id, SUM(t.amount) as total
-             FROM transactions t
-             JOIN users u ON t.user_id = u.id
-             WHERE u.city = $1 AND t.category = $2 AND t.type = 'expense'
-               AND t.date >= NOW() - INTERVAL '30 days'
-             GROUP BY t.user_id
-           ) user_expense`,
-          [city, category]
-        );
+    return { avgExpense, userCount };
+  }
 
-        if (result.rows.length > 0 && result.rows[0].avg_expense) {
-          const avgExpense = parseFloat(result.rows[0].avg_expense);
-          const userCount = parseInt(result.rows[0].user_count);
+  async submitRegionalContribution(city: string, category: string, totalExpense: number, periodMonth?: string): Promise<any> {
+    const safeCity = String(city ?? '').trim();
+    const safeCategory = String(category ?? '').trim();
+    const safeAmount = Number(totalExpense);
+    const safePeriodMonth = this.sanitizePeriodMonth(periodMonth);
 
-          const id = uuidv4();
-          await query(
-            `INSERT INTO regional_averages (id, city, category, avg_expense, user_count, updated_at)
-             VALUES ($1, $2, $3, $4, $5, NOW())
-             ON CONFLICT (city, category) DO UPDATE SET avg_expense = $4, user_count = $5, updated_at = NOW()`,
-            [id, city, category, avgExpense, userCount]
-          );
+    if (!safeCity || !safeCategory || !Number.isFinite(safeAmount) || safeAmount <= 0) {
+      throw new Error('City, category and totalExpense are required');
+    }
 
-          return { avgExpense, userCount };
-        }
+    await query(
+      `INSERT INTO regional_contributions (id, city, category, total_expense, period_month, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [uuidv4(), safeCity, safeCategory, safeAmount, safePeriodMonth]
+    );
+
+    return this.refreshRegionalAverage(safeCity, safeCategory, safePeriodMonth);
+  }
+
+  async getRegionalAverages(city: string, category: string, periodMonth?: string): Promise<any> {
+    try {
+      const safeCity = String(city ?? '').trim();
+      const safeCategory = String(category ?? '').trim();
+      const safePeriodMonth = this.sanitizePeriodMonth(periodMonth);
+
+      if (!safeCity || !safeCategory) {
+        return { avgExpense: 0, userCount: 0 };
       }
 
+      const result = await query(
+        `SELECT
+           AVG(total_expense) as avg_expense,
+           COUNT(*) as user_count
+         FROM regional_contributions
+         WHERE city = $1 AND category = $2 AND period_month = $3`,
+        [safeCity, safeCategory, safePeriodMonth]
+      );
+
       const row = result.rows[0];
-      return row
-        ? {
-            avgExpense: parseFloat(row.avg_expense ?? row.avgExpense ?? 0),
-            userCount: parseInt(row.user_count ?? row.userCount ?? 0),
-          }
-        : { avgExpense: 0, userCount: 0 };
+      return {
+        avgExpense: parseFloat(row?.avg_expense ?? 0),
+        userCount: parseInt(row?.user_count ?? 0, 10),
+      };
     } catch (error) {
       console.error('Erro ao calcular médias regionais', error);
       return { avgExpense: 0, userCount: 0 };
     }
   }
 
-  /**
-   * Registra um usuário para fins de cálculo de médias regionais
-   */
-  async registerUserCity(userId: string, city: string): Promise<void> {
-    try {
-      const dbUserId = await this.resolveUserId(userId);
-      await query(
-        `UPDATE users SET city = $1 WHERE id = $2`,
-        [city, dbUserId]
-      );
-    } catch (error) {
-      console.error('Erro ao registrar cidade do usuário', error);
-    }
+  async registerUserCity(_userId: string, _city: string): Promise<void> {
+    // Mantido apenas para compatibilidade com versoes antigas do app.
+    // A comparacao regional atual nao grava cidade no cadastro do usuario.
   }
 }
 
