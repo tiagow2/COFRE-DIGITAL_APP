@@ -3,7 +3,6 @@ import { useFinancialTheme } from '@/hooks/useFinancialTheme';
 import { geoLocationService } from '@/services/geoLocationService';
 import { distanceMeters, geoReminderService, MonitoredLocation } from '@/services/geoReminderService';
 import { placesService, PlaceResult } from '@/services/placesService';
-import { RegionalAverage, regionalComparisonService } from '@/services/regionalComparisonService';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -19,6 +18,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -59,7 +60,6 @@ export default function GeoRemindersScreen() {
   const [places, setPlaces] = useState<PlaceResult[]>([]);
   const [locations, setLocations] = useState<MonitoredLocation[]>([]);
   const [activeAlerts, setActiveAlerts] = useState<InternalAlert[]>([]);
-  const [regionalAverage, setRegionalAverage] = useState<RegionalAverage | null>(null);
 
   // Estados de Carregamento
   const [loadingPlaces, setLoadingPlaces] = useState(false);
@@ -117,11 +117,6 @@ export default function GeoRemindersScreen() {
 
       const savedLocations = await loadLocations();
       checkInternalAlerts(loc.lat, loc.lng, savedLocations);
-
-      if (city && city !== 'Desconhecida') {
-        const avg = await regionalComparisonService.fetchAverage(city, category);
-        setRegionalAverage(avg);
-      }
     } catch (err) {
       setLocationState('error');
     } finally {
@@ -132,13 +127,6 @@ export default function GeoRemindersScreen() {
   useEffect(() => {
     refreshEnvironment();
   }, []);
-
-  // Dispara quando a categoria de busca muda, para atualizar o card de Média Regional
-  useEffect(() => {
-    if (currentCity && currentCity !== 'Desconhecida') {
-      regionalComparisonService.fetchAverage(currentCity, category).then(setRegionalAverage);
-    }
-  }, [category, currentCity]);
 
   const checkInternalAlerts = (lat: number, lng: number, monitored: MonitoredLocation[]) => {
     const alerts: InternalAlert[] = [];
@@ -285,21 +273,6 @@ export default function GeoRemindersScreen() {
           )}
         </View>
 
-        {/* 3. Comparação Média Regional */}
-        <View style={[s.card, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Ionicons name="pie-chart-outline" size={20} color="#0369A1" />
-            <Text style={[s.cardTitle, { color: '#0369A1', marginBottom: 0 }]}>Média da sua Região</Text>
-          </View>
-          <Text style={s.muted}>
-            Na sua cidade, a média gasta em <Text style={{fontWeight: '700'}}>{category}</Text> é de{' '}
-            <Text style={{fontWeight: '800', color: '#0369A1'}}>
-              {regionalAverage && regionalAverage.avgExpense > 0 ? fmt(regionalAverage.avgExpense) : '--'}
-            </Text>.
-          </Text>
-          <Text style={[s.muted, { fontSize: 11, marginTop: 4 }]}>Dados anônimos baseados no GPS.</Text>
-        </View>
-
         <View style={s.infoCard}>
           <Ionicons name="information-circle-outline" size={18} color={theme.accent} />
           <Text style={s.infoText}>
@@ -315,7 +288,7 @@ export default function GeoRemindersScreen() {
 
       {/* Modal de Busca de Novos Locais */}
       <Modal visible={isSearchModalVisible} animationType="slide" transparent onRequestClose={() => setSearchModalVisible(false)}>
-        <View style={s.overlay}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheet}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Monitorar novo local</Text>
@@ -355,7 +328,7 @@ export default function GeoRemindersScreen() {
               </ScrollView>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

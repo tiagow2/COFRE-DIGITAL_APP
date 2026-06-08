@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -186,7 +186,7 @@ export default function LoansScreen() {
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={s.overlay}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheet}>
             <Text style={s.sheetTitle}>Nova Dívida</Text>
             <TextInput style={s.input} placeholder="Descrição (ex: Carro)" value={newName} onChangeText={setNewName} />
@@ -200,12 +200,12 @@ export default function LoansScreen() {
               <TouchableOpacity style={[s.saveBtn, { backgroundColor: theme.accent }]} onPress={handleCreate}><Text style={s.saveBtnTxt}>Salvar</Text></TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal de Pagamento de Parcela */}
       <Modal visible={!!paymentModal} animationType="slide" transparent>
-        <View style={s.overlay}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheet}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Pagar Parcela</Text>
@@ -227,7 +227,7 @@ export default function LoansScreen() {
             
             <TouchableOpacity style={s.cancelBtn} onPress={() => setPaymentModal(null)}><Text style={s.cancelBtnTxt}>Cancelar</Text></TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -244,24 +244,24 @@ const s = StyleSheet.create({
   card: { backgroundColor: '#fff', padding: 24, borderRadius: 28, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2, marginBottom: 16 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   cardTitle: { fontSize: 16, fontWeight: '700', color: '#111827', flex: 1 },
-  cardTotal: { fontSize: 16, fontWeight: '800', color: '#EF4444' },
+  cardTotal: { fontSize: 18, fontWeight: '800', color: '#EF4444' },
   cardProgress: { fontSize: 13, color: '#6B7280', marginBottom: 16 },
-  progBg: { height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, marginBottom: 20 },
-  progFill: { height: '100%', borderRadius: 4 },
-  payBtn: { paddingVertical: 12, borderRadius: 16, alignItems: 'center' },
-  payBtnTxt: { fontWeight: '700', fontSize: 14 },
+  progBg: { height: 10, backgroundColor: '#F1F5F9', borderRadius: 5, marginBottom: 20, overflow: 'hidden' },
+  progFill: { height: '100%', borderRadius: 5 },
+  payBtn: { paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  payBtnTxt: { fontWeight: '800', fontSize: 14 },
   fab: { position: 'absolute', right: 24, bottom: 90, width: 60, height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   overlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 },
-  sheetTitle: { fontSize: 20, fontWeight: '700', marginBottom: 20, color: '#111827', textAlign: 'center' },
+  sheetTitle: { fontSize: 22, fontWeight: '800', marginBottom: 24, color: '#111827', textAlign: 'center' },
   sheetDesc: { fontSize: 14, color: '#4B5563', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
-  input: { borderWidth: 0, backgroundColor: '#F1F5F9', borderRadius: 16, padding: 16, fontSize: 15, marginBottom: 12, color: '#111827', fontWeight: '500' },
+  input: { borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB', borderRadius: 16, padding: 16, fontSize: 16, marginBottom: 16, color: '#111827', fontWeight: '500' },
   row: { flexDirection: 'row', gap: 12 },
-  payOptionBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18, borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 10 },
-  payOptionTxt: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  payOptionBtn: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, borderRadius: 16, borderWidth: 1.5, borderColor: '#E5E7EB', marginBottom: 12 },
+  payOptionTxt: { fontSize: 15, fontWeight: '800', color: '#111827' },
   payOptionSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  cancelBtn: { flex: 1, padding: 16, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center' },
-  cancelBtnTxt: { color: '#4B5563', fontWeight: '600', fontSize: 16 },
-  saveBtn: { flex: 1, padding: 16, borderRadius: 16, alignItems: 'center' },
-  saveBtnTxt: { color: '#fff', fontWeight: '600', fontSize: 16 }
+  cancelBtn: { flex: 1, padding: 16, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  cancelBtnTxt: { color: '#475569', fontWeight: '700', fontSize: 16 },
+  saveBtn: { flex: 1, padding: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  saveBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 16 }
 });

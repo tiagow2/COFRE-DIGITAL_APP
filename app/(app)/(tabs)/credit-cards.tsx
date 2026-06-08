@@ -16,6 +16,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -182,7 +184,7 @@ export default function CreditCardsScreen() {
       )}
 
       <Modal visible={showAddModal} animationType="slide" transparent onRequestClose={() => setShowAddModal(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowAddModal(false)}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <TouchableOpacity activeOpacity={1} style={s.sheet}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Novo cartao</Text>
@@ -249,7 +251,7 @@ export default function CreditCardsScreen() {
               {submitting ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Salvar cartao</Text>}
             </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -385,17 +387,17 @@ const s = StyleSheet.create({
     maxHeight: "92%",
   },
   handle: { width: 40, height: 5, backgroundColor: "#E5E7EB", borderRadius: 3, alignSelf: "center", marginBottom: 18 },
-  sheetTitle: { fontSize: 20, fontWeight: "800", marginBottom: 18, color: "#111827", textAlign: "center" },
-  label: { fontSize: 13, fontWeight: "700", color: "#374151", marginBottom: 8 },
+  sheetTitle: { fontSize: 22, fontWeight: "800", marginBottom: 24, color: "#111827", textAlign: "center" },
+  label: { fontSize: 14, fontWeight: "700", color: "#374151", marginBottom: 8 },
   input: {
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 15,
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 16,
     color: "#111827",
     backgroundColor: "#F9FAFB",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   twoColumn: { flexDirection: "row", gap: 10 },
   fieldColumn: { flex: 1, minWidth: 0 },
@@ -412,11 +414,11 @@ const s = StyleSheet.create({
   swatchActive: { borderColor: "#111827" },
   submitBtn: {
     backgroundColor: "#111827",
-    borderRadius: 16,
-    height: 54,
+    borderRadius: 18,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 4,
+    marginTop: 8,
   },
   submitBtnDisabled: { opacity: 0.6 },
   submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },

@@ -438,7 +438,7 @@ export default function HomeScreen() {
       </TouchableOpacity>
 
       <Modal visible={modal} animationType="slide" transparent onRequestClose={() => setModal(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
           <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setModal(false)}>
             <TouchableOpacity activeOpacity={1} style={s.sheet}>
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={s.sheetContent}>
@@ -605,14 +605,14 @@ const s = StyleSheet.create({
   balanceDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 16 },
   balanceItemLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600' },
   balanceItemValue: { color: '#fff', fontSize: 14, fontWeight: '800', marginTop: 2, minWidth: 0 },
-  quickActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginHorizontal: 20, marginBottom: 24 },
+  quickActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginHorizontal: 20, marginBottom: 28 },
   quickBtn: { alignItems: 'center', flex: 1, minWidth: 0 },
   quickIcon: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 6, borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)' },
   quickLabel: { fontSize: 11, color: '#374151', fontWeight: '700', maxWidth: '100%' },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginBottom: 12, marginTop: 4 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginBottom: 16, marginTop: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#111827', flex: 1, minWidth: 0 },
   seeAll: { fontSize: 13, color: '#1565C0', fontWeight: '700', flexShrink: 0 },
-  alertCard: { marginHorizontal: 20, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, flexDirection: 'row', gap: 12 },
+  alertCard: { marginHorizontal: 20, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, flexDirection: 'row', gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
   alertIcon: { width: 38, height: 38, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.62)', alignItems: 'center', justifyContent: 'center' },
   alertHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 4 },
   alertName: { fontSize: 14, fontWeight: '800', color: '#111827', flex: 1, minWidth: 0 },
@@ -630,7 +630,7 @@ const s = StyleSheet.create({
   txDesc: { fontSize: 14, fontWeight: '700', color: '#111827', minWidth: 0 },
   txCat: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
   txAmt: { fontSize: 14, fontWeight: '800', flexShrink: 0, maxWidth: 132 },
-  emptyBox: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: '#F3F4F6', borderStyle: 'dashed' },
+  emptyBox: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1.5, borderColor: '#EEF2F7', borderStyle: 'dashed' },
   emptyIconBg: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 6 },
   emptyDesc: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', marginBottom: 20 },

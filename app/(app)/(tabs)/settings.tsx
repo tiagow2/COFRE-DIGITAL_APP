@@ -8,12 +8,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, Image, Modal, ScrollView, Share, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Modal, ScrollView, Share, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { exportService } from '@/services/exportService';
+import { loanService } from '@/services/loanService';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
-  const { transactions } = useFinance();
+  const { transactions, creditCards, goals } = useFinance();
   const theme = useFinancialTheme();
   const [profile, setProfile] = useState<LocalProfile | null>(null);
   const [settings, setSettings] = useState({
@@ -24,6 +26,8 @@ export default function SettingsScreen() {
   const [masterConf, setMasterConf]   = useState('');
   const [retireAge, setRetireAge]     = useState('28');
   const [retireIncome, setRetireIncome] = useState('6500');
+  const [irModal, setIrModal] = useState(false);
+  const [irYear, setIrYear] = useState(new Date().getFullYear().toString());
 
   const toggle = (k: keyof typeof settings) => {
     Haptics.selectionAsync();
@@ -64,18 +68,10 @@ export default function SettingsScreen() {
   };
 
   const handleExportIR = async () => {
-    const year = new Date().getFullYear();
-    const income = transactions.filter((t: any) => t.type === 'income');
-    const deductible = transactions.filter((t: any) => ['Saúde', 'Educação'].includes(t.category));
-    const totalIncome = income.reduce((sum: number, t: any) => sum + t.amount, 0);
-    const totalDeductible = deductible.reduce((sum: number, t: any) => sum + t.amount, 0);
-    const message = `IR ${year} - Cofre Digital\n\nRendimentos: R$ ${totalIncome.toFixed(2)}\nDedutíveis (Saúde/Educação): R$ ${totalDeductible.toFixed(2)}\n\nCompartilhe com seu contador.`;
-
-    try {
-      await Share.share({ message, title: `IR ${year}` });
-    } catch {
-      Alert.alert(`IR ${year}`, message);
-    }
+    if (!user?.uid) return;
+    const loans = await loanService.listLoans(user.uid);
+    await exportService.exportToIR({ user, transactions, loans, creditCards, goals }, Number(irYear));
+    setIrModal(false);
   };
 
   const Row = ({ label, icon, sKey, onPress, isDestructive = false, isLast = false }: {
@@ -100,6 +96,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
       <View style={s.header}>
         <TouchableOpacity style={s.backBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.back(); }}>
           <Ionicons name="arrow-back" size={22} color="#111827" />
@@ -149,7 +146,7 @@ export default function SettingsScreen() {
           <Row icon="cloud-upload-outline"  label="Backup automático" sKey="autoBackup" />
           <Row icon="cloud-offline-outline" label="Modo offline" sKey="offlineSync" />
           <Row icon="location-outline" label="Lembretes por localização" onPress={() => router.push('/(app)/(tabs)/geo-reminders' as never)} />
-          <Row icon="document-text-outline" label="Exportar dados para IR" onPress={handleExportIR} isLast />
+        <Row icon="document-text-outline" label="Exportar dados para IR" onPress={() => setIrModal(true)} isLast />
         </View>
 
         <Text style={s.sectionLabel}>Planejamento de aposentadoria</Text>
@@ -185,9 +182,10 @@ export default function SettingsScreen() {
           }} isLast />
         </View>
       </ScrollView>
+    </KeyboardAvoidingView>
 
       <Modal visible={masterModal} animationType="slide" transparent onRequestClose={() => setMasterModal(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setMasterModal(false)}>
+      <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <TouchableOpacity activeOpacity={1} style={s.sheet}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Senha Mestra</Text>
@@ -202,8 +200,24 @@ export default function SettingsScreen() {
               <Text style={s.submitTxt}>Salvar Senha Mestra</Text>
             </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+      </KeyboardAvoidingView>
       </Modal>
+
+    <Modal visible={irModal} animationType="slide" transparent onRequestClose={() => setIrModal(false)}>
+      <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <TouchableOpacity activeOpacity={1} style={s.sheet}>
+          <View style={s.handle} />
+          <Text style={s.sheetTitle}>Exportar para IR</Text>
+          <Text style={{ color: '#6B7280', fontSize: 13, marginBottom: 20, textAlign: 'center' }}>Gera um arquivo JSON estruturado contendo simulações de rendimentos, despesas, dívidas pagas e contribuições de metas para o ano escolhido.</Text>
+          <Text style={s.fieldLabel}>Ano Base</Text>
+          <TextInput style={[s.input, { marginBottom: 24 }]} keyboardType="numeric" maxLength={4} value={irYear} onChangeText={setIrYear} />
+          <TouchableOpacity style={[s.submitBtn, { backgroundColor: theme.accent }]} onPress={handleExportIR}>
+            <Text style={s.submitTxt}>Gerar Relatório</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.submitBtn, { backgroundColor: 'transparent', marginTop: 8 }]} onPress={() => setIrModal(false)}><Text style={[s.submitTxt, { color: '#6B7280' }]}>Cancelar</Text></TouchableOpacity>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </Modal>
     </SafeAreaView>
   );
 }
@@ -241,7 +255,9 @@ const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40, maxHeight: '92%' },
   handle: { width: 40, height: 5, backgroundColor: '#E5E7EB', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },
-  sheetTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8, color: '#111827', textAlign: 'center' },
-  submitBtn: { backgroundColor: '#111827', borderRadius: 16, height: 54, alignItems: 'center', justifyContent: 'center' },
+  sheetTitle: { fontSize: 22, fontWeight: '800', marginBottom: 12, color: '#111827', textAlign: 'center' },
+  submitBtn: { backgroundColor: '#111827', borderRadius: 16, height: 56, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   submitTxt: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#111827', backgroundColor: '#F9FAFB', marginBottom: 20 },
+  fieldLabel: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 8 },
 });

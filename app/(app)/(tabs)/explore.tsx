@@ -180,16 +180,20 @@ export default function DashboardScreen() {
         <LinearGradient colors={[theme.accent, theme.accentDark]} style={s.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <Text style={s.heroLabel}>{balance > 0 ? 'Saldo positivo' : balance < 0 ? 'Saldo negativo' : 'Saldo zerado'}</Text>
           <Text style={s.heroBalance} adjustsFontSizeToFit numberOfLines={1}>{fmt(balance)}</Text>
-          <Text style={s.heroSub}>Tema ajustado conforme seu saldo atual</Text>
           <View style={s.heroRow}>
-            <View style={s.heroItem}>
-              <Ionicons name="arrow-down-circle-outline" size={14} color="rgba(255,255,255,0.7)" />
-              <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(getMonthlyIncome())}</Text>
+            <View style={s.heroItemPill}>
+              <Ionicons name="arrow-down-circle" size={20} color="#fff" style={{ opacity: 0.9 }} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.heroItemLabel}>Receitas</Text>
+                <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(getMonthlyIncome())}</Text>
+              </View>
             </View>
-            <View style={s.heroDivider} />
-            <View style={s.heroItem}>
-              <Ionicons name="arrow-up-circle-outline" size={14} color="rgba(255,255,255,0.7)" />
-              <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(getMonthlyExpenses())}</Text>
+            <View style={s.heroItemPill}>
+              <Ionicons name="arrow-up-circle" size={20} color="#fff" style={{ opacity: 0.9 }} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.heroItemLabel}>Despesas</Text>
+                <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(getMonthlyExpenses())}</Text>
+              </View>
             </View>
           </View>
         </LinearGradient>
@@ -215,7 +219,12 @@ export default function DashboardScreen() {
           <>
             {creditCards.length > 0 && (
               <>
-                <Text style={s.secTitle}>Cartões de crédito</Text>
+                <View style={s.sectionHeader}>
+                  <View style={s.sectionHeaderLeft}>
+                    <Ionicons name="card" size={18} color={theme.accent} />
+                    <Text style={s.secTitle}>Cartões de crédito</Text>
+                  </View>
+                </View>
                 {creditCards.map((card) => {
                   const info = getCardLimitInfo(card);
                   return (
@@ -239,10 +248,13 @@ export default function DashboardScreen() {
 
             {localLoans.length > 0 && (
               <>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 20 }}>
-                  <Text style={[s.secTitle, { paddingRight: 0 }]}>Empréstimos e dívidas</Text>
+                <View style={s.sectionHeader}>
+                  <View style={s.sectionHeaderLeft}>
+                    <Ionicons name="cash" size={18} color={theme.accent} />
+                    <Text style={s.secTitle}>Empréstimos e dívidas</Text>
+                  </View>
                   <TouchableOpacity onPress={() => router.push('/(app)/(tabs)/loans' as never)}>
-                    <Text style={{ fontSize: 13, color: '#1565C0', fontWeight: '600' }}>Gerenciar</Text>
+                    <Text style={[s.seeAll, { color: theme.accent }]}>Gerenciar</Text>
                   </TouchableOpacity>
                 </View>
                 {localLoans.slice(0, 3).map((loan) => {
@@ -268,7 +280,12 @@ export default function DashboardScreen() {
               </>
             )}
 
-            <Text style={s.secTitle}>Ferramentas</Text>
+            <View style={s.sectionHeader}>
+              <View style={s.sectionHeaderLeft}>
+                <Ionicons name="grid" size={18} color={theme.accent} />
+                <Text style={s.secTitle}>Ferramentas</Text>
+              </View>
+            </View>
             <View style={s.toolsGrid}>
               {[
                 { label: 'Ver extrato', icon: 'receipt-outline', color: '#7C3AED', action: () => router.push('/(app)/(tabs)/extrato' as never) },
@@ -292,7 +309,12 @@ export default function DashboardScreen() {
 
         {activeTab === 'cashflow' && (
           <>
-            <Text style={s.secTitle}>Fluxo dos últimos 6 meses</Text>
+            <View style={s.sectionHeader}>
+              <View style={s.sectionHeaderLeft}>
+                <Ionicons name="bar-chart" size={18} color={theme.accent} />
+                <Text style={s.secTitle}>Fluxo dos últimos 6 meses</Text>
+              </View>
+            </View>
             <View style={s.chartCard}>
               <View style={s.chartBars}>
                 {flow.map((item) => {
@@ -309,7 +331,12 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            <Text style={s.secTitle}>Projeção dos próximos 12 meses</Text>
+            <View style={s.sectionHeader}>
+              <View style={s.sectionHeaderLeft}>
+                <Ionicons name="trending-up" size={18} color={theme.accent} />
+                <Text style={s.secTitle}>Projeção dos próximos 12 meses</Text>
+              </View>
+            </View>
             <View style={s.projectionCard}>
               <Text style={s.note}>Baseada nas receitas e despesas registradas este mês.</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
@@ -356,15 +383,20 @@ export default function DashboardScreen() {
             ) : (
               <>
                 <View style={s.summaryGrid}>
-                  <Metric title="Receitas" value={fmt(annual.totalIncome)} color="#059669" />
-                  <Metric title="Despesas" value={fmt(annual.totalExpense)} color="#EF4444" />
-                  <Metric title="Saldo final" value={fmt(annual.finalBalance)} color={annual.finalBalance >= 0 ? '#059669' : '#EF4444'} />
-                  <Metric title="Maior mês" value={annual.biggestMonth ? `${annual.biggestMonth.label} ${fmt(annual.biggestMonth.expense)}` : '--'} color="#D97706" />
-                  <Metric title="Categoria líder" value={annual.biggestCategory ? annual.biggestCategory.category : '--'} color="#7C3AED" />
-                  <Metric title="Cartão mais usado" value={annual.mostUsedCard ? annual.mostUsedCard.name : 'Sem dados'} color="#1565C0" />
+                  <Metric title="Receitas" value={fmt(annual.totalIncome)} color="#059669" icon="arrow-down" />
+                  <Metric title="Despesas" value={fmt(annual.totalExpense)} color="#EF4444" icon="arrow-up" />
+                  <Metric title="Saldo final" value={fmt(annual.finalBalance)} color={annual.finalBalance >= 0 ? '#059669' : '#EF4444'} icon="wallet" />
+                  <Metric title="Maior mês" value={annual.biggestMonth ? `${annual.biggestMonth.label}\n${fmt(annual.biggestMonth.expense)}` : '--'} color="#D97706" icon="calendar" />
+                  <Metric title="Categoria líder" value={annual.biggestCategory ? `${annual.biggestCategory.category}\n${fmt(annual.biggestCategory.total)}` : '--'} color="#7C3AED" icon="star" />
+                  <Metric title="Cartão mais usado" value={annual.mostUsedCard ? `${annual.mostUsedCard.name}\n${fmt(annual.mostUsedCard.total)}` : 'Sem dados'} color="#1565C0" icon="card" />
                 </View>
 
-                <Text style={s.secTitle}>Receita x despesa por mês</Text>
+                <View style={s.sectionHeader}>
+                  <View style={s.sectionHeaderLeft}>
+                    <Ionicons name="stats-chart" size={18} color={theme.accent} />
+                    <Text style={s.secTitle}>Receita x despesa por mês</Text>
+                  </View>
+                </View>
                 <View style={s.chartCard}>
                   <View style={s.annualBars}>
                     {annual.months.map((month) => {
@@ -404,7 +436,12 @@ export default function DashboardScreen() {
                   </View>
                 )}
 
-                <Text style={s.secTitle}>Gastos por categoria</Text>
+                <View style={s.sectionHeader}>
+                  <View style={s.sectionHeaderLeft}>
+                    <Ionicons name="pie-chart" size={18} color={theme.accent} />
+                    <Text style={s.secTitle}>Gastos por categoria</Text>
+                  </View>
+                </View>
                 <View style={s.annualCard}>
                   {annual.categories.map((item, index) => {
                     const total = Math.max(annual.totalExpense, 1);
@@ -461,10 +498,15 @@ export default function DashboardScreen() {
   );
 }
 
-function Metric({ title, value, color }: { title: string; value: string; color: string }) {
+function Metric({ title, value, color, icon }: { title: string; value: string; color: string; icon: string }) {
   return (
     <View style={s.metricCard}>
-      <Text style={s.metricTitle} numberOfLines={1}>{title}</Text>
+      <View style={s.metricHeader}>
+        <View style={[s.metricIconBg, { backgroundColor: `${color}15` }]}>
+          <Ionicons name={icon as any} size={14} color={color} />
+        </View>
+        <Text style={s.metricTitle} numberOfLines={1}>{title}</Text>
+      </View>
       <Text style={[s.metricValue, { color }]} numberOfLines={2} adjustsFontSizeToFit>{value}</Text>
     </View>
   );
@@ -473,20 +515,22 @@ function Metric({ title, value, color }: { title: string; value: string; color: 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F9FAFB' },
   content: { paddingBottom: 120 },
-  hero: { marginHorizontal: 20, marginTop: 10, borderRadius: 32, padding: 28, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 8 },
+  hero: { marginHorizontal: 20, marginTop: 10, borderRadius: 36, padding: 28, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 8 },
   heroLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '700', marginBottom: 4 },
-  heroBalance: { color: '#fff', fontSize: 40, fontWeight: '800', letterSpacing: -1, marginBottom: 6 },
-  heroSub: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginBottom: 20 },
-  heroRow: { flexDirection: 'row', alignItems: 'center' },
-  heroItem: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  heroDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 16 },
-  heroItemTxt: { color: '#fff', fontSize: 14, fontWeight: '800', minWidth: 0 },
+  heroBalance: { color: '#fff', fontSize: 42, fontWeight: '800', letterSpacing: -1, marginBottom: 16 },
+  heroRow: { flexDirection: 'row', gap: 12 },
+  heroItemPill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.15)', padding: 14, borderRadius: 20 },
+  heroItemLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600', marginBottom: 2 },
+  heroItemTxt: { color: '#fff', fontSize: 16, fontWeight: '800', minWidth: 0 },
   tabBar: { flexDirection: 'row', marginHorizontal: 20, backgroundColor: '#F1F5F9', borderRadius: 20, padding: 6, marginBottom: 20 },
   tab: { flex: 1, minWidth: 0, paddingVertical: 12, alignItems: 'center', borderRadius: 16 },
   tabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },
   tabTxt: { fontSize: 14, fontWeight: '600', color: '#64748B' },
   tabTxtActive: { color: '#111827', fontWeight: '800' },
-  secTitle: { fontSize: 15, fontWeight: '800', color: '#111827', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  secTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  seeAll: { fontSize: 13, fontWeight: '700' },
   secTitleInline: { fontSize: 15, fontWeight: '800', color: '#111827' },
   cardRow: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
   cardDot: { width: 12, height: 12, borderRadius: 6 },
@@ -499,7 +543,7 @@ const s = StyleSheet.create({
   progressBg: { height: 6, backgroundColor: '#F3F4F6', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
   toolsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 10 },
-  toolBtn: { flexGrow: 1, flexBasis: '47%', minWidth: 130, backgroundColor: '#F8FAFC', borderRadius: 24, padding: 18, alignItems: 'flex-start' },
+  toolBtn: { flexGrow: 1, flexBasis: '47%', minWidth: 130, backgroundColor: '#fff', borderRadius: 24, padding: 18, alignItems: 'flex-start', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#F8FAFC' },
   toolIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   toolLabel: { fontSize: 13, fontWeight: '700', color: '#111827', minWidth: 0 },
   chartCard: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 28, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
@@ -520,9 +564,11 @@ const s = StyleSheet.create({
   yearChipText: { fontSize: 13, color: '#6B7280', fontWeight: '800' },
   yearChipTextActive: { color: '#fff' },
   summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 20, paddingTop: 14 },
-  metricCard: { flexGrow: 1, flexBasis: '47%', minWidth: 134, backgroundColor: '#F8FAFC', borderRadius: 24, padding: 18 },
-  metricTitle: { fontSize: 11, color: '#9CA3AF', fontWeight: '800', marginBottom: 6 },
-  metricValue: { fontSize: 14, fontWeight: '800', minWidth: 0 },
+  metricCard: { flexGrow: 1, flexBasis: '47%', minWidth: 134, backgroundColor: '#fff', borderRadius: 24, padding: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#F8FAFC' },
+  metricHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  metricIconBg: { width: 28, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  metricTitle: { fontSize: 12, color: '#6B7280', fontWeight: '700', flex: 1 },
+  metricValue: { fontSize: 15, fontWeight: '800', minWidth: 0, lineHeight: 20 },
   annualBars: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 162 },
   monthCol: { flex: 1, minWidth: 0, alignItems: 'center', borderRadius: 12, paddingVertical: 4 },
   monthColActive: { backgroundColor: '#F3F4F6' },

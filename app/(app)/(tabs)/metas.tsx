@@ -4,7 +4,7 @@ import { parseCurrencyInput } from '@/utils/currency';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const fmt = (value: number) =>
@@ -236,7 +236,7 @@ export default function GoalsScreen() {
       </ScrollView>
 
       <Modal visible={modalGoal} animationType="slide" transparent onRequestClose={() => setModalGoal(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setModalGoal(false)}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <TouchableOpacity activeOpacity={1} style={s.sheet}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Nova meta</Text>
@@ -290,11 +290,11 @@ export default function GoalsScreen() {
               <Text style={s.submitTxt}>Criar meta</Text>
             </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={!!modalDeposit} animationType="slide" transparent onRequestClose={() => setModalDeposit(null)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setModalDeposit(null)}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <TouchableOpacity activeOpacity={1} style={s.sheet}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Depositar na meta</Text>
@@ -352,7 +352,7 @@ export default function GoalsScreen() {
               <Text style={s.submitTxt}>Confirmar depósito</Text>
             </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -389,15 +389,15 @@ const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40, maxHeight: '92%', shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
   handle: { width: 40, height: 5, backgroundColor: '#E5E7EB', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },
-  sheetTitle: { fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#111827', textAlign: 'center' },
+  sheetTitle: { fontSize: 22, fontWeight: '800', marginBottom: 24, color: '#111827', textAlign: 'center' },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 16, fontSize: 15, color: '#111827', backgroundColor: '#F9FAFB', marginBottom: 16 },
-  submitBtn: { borderRadius: 16, height: 54, alignItems: 'center', justifyContent: 'center' },
+  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#111827', backgroundColor: '#F9FAFB', marginBottom: 20 },
+  submitBtn: { borderRadius: 16, height: 56, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   submitTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
   iconChip: { alignItems: 'center', gap: 4, marginRight: 12, padding: 8, borderRadius: 12, borderWidth: 1, borderColor: '#F3F4F6', backgroundColor: '#fff' },
   iconChipIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   iconChipTxt: { fontSize: 10, color: '#6B7280', fontWeight: '600' },
-  payOptionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#fff', marginRight: 10 },
+  payOptionBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#fff', marginRight: 12 },
   payOptionTxt: { fontSize: 13, fontWeight: '700', color: '#374151' },
   depositSummary: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20, padding: 12, backgroundColor: '#F3F4F6', borderRadius: 12 },
   depositSummaryText: { color: '#374151', fontWeight: '800', flex: 1, minWidth: 0 },

@@ -100,20 +100,28 @@ function utilityLineToBarcode(digits: string, warnings: string[]) {
 }
 
 function dueDateFromFactor(factor: number): string | null {
-  if (!Number.isFinite(factor) || factor <= 0) return null;
+  // Fatores abaixo de 1000 não representam data válida (geralmente boletos à vista ou contra-apresentação)
+  if (!Number.isFinite(factor) || factor < 1000) return null;
 
-  const oldBase = new Date('1997-10-07T00:00:00-03:00');
-  const oldDate = new Date(oldBase);
-  oldDate.setDate(oldDate.getDate() + factor);
+  // Data base oficial da Febraban: 07/10/1997 (Meio-dia UTC para evitar shifts de fuso horário)
+  const baseDateMs = Date.UTC(1997, 9, 7, 12, 0, 0);
+  
+  // Data exata somando o fator
+  let dueDateMs = baseDateMs + factor * 24 * 60 * 60 * 1000;
 
-  const resetDate = new Date('2025-02-22T00:00:00-03:00');
-  if (oldDate < resetDate && factor >= 1000) {
-    const newDate = new Date(resetDate);
-    newDate.setDate(newDate.getDate() + (factor - 1000));
-    return newDate.toISOString();
+  // Regra da virada Febraban: O fator "volta" de 9999 para 1000 em 22/02/2025.
+  // Se a data base calculada cair em um passado muito distante (ex: ano 2000), 
+  // significa que o fator pertence ao novo ciclo, então somamos 9000 dias para corrigir.
+  const currentYear = new Date().getFullYear();
+  const pastThresholdMs = Date.UTC(currentYear - 10, 0, 1, 12, 0, 0);
+  
+  if (dueDateMs < pastThresholdMs) {
+    dueDateMs += 9000 * 24 * 60 * 60 * 1000;
   }
 
-  return oldDate.toISOString();
+  const finalDate = new Date(dueDateMs);
+  finalDate.setUTCHours(12, 0, 0, 0); // Trava meio-dia UTC novamente para segurança da interface
+  return finalDate.toISOString();
 }
 
 function parseBankBarcode(original: string, barcode: string, warnings: string[]): ParsedBoleto {

@@ -13,12 +13,19 @@ import {
   Text,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CATEGORIES = ['Alimentação', 'Transporte', 'Lazer', 'Saúde', 'Moradia', 'Educação', 'Outros'];
 const MIN_USERS = 5;
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const safeDate = (value: unknown) => {
+  const date = new Date(typeof value === 'string' ? value : new Date().toISOString());
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+};
 
 export default function CompareScreen() {
   const { user } = useAuth();
@@ -32,10 +39,10 @@ export default function CompareScreen() {
     const now = new Date();
     return transactions
       .filter((tx) => {
-        const date = new Date(tx.date);
+        const date = safeDate(tx.date || tx.createdAt);
         return (
           tx.type === 'expense' &&
-          tx.category === selectedCategory &&
+          (tx.category || '').trim() === selectedCategory &&
           date.getMonth() === now.getMonth() &&
           date.getFullYear() === now.getFullYear()
         );
@@ -46,10 +53,10 @@ export default function CompareScreen() {
   const categoryCount = useMemo(() => {
     const now = new Date();
     return transactions.filter((tx) => {
-      const date = new Date(tx.date);
+      const date = safeDate(tx.date || tx.createdAt);
       return (
         tx.type === 'expense' &&
-        tx.category === selectedCategory &&
+        (tx.category || '').trim() === selectedCategory &&
         date.getMonth() === now.getMonth() &&
         date.getFullYear() === now.getFullYear()
       );
@@ -76,14 +83,18 @@ export default function CompareScreen() {
   };
 
   // Cálculos para o gráfico de barras
-  const maxBarValue = result ? Math.max(result.userAmount, result.regionalAverage) : 1;
-  const userBarWidth = result ? `${Math.max((result.userAmount / maxBarValue) * 100, 5)}%` : '0%';
-  const regionBarWidth = result ? `${Math.max((result.regionalAverage / maxBarValue) * 100, 5)}%` : '0%';
+  const currentUserAmount = result?.userAmount ?? yourMonthlyExpense;
+  const currentRegionAmount = result?.regionalAverage ?? 0;
+  const maxBarValue = Math.max(currentUserAmount, currentRegionAmount, 1);
+  const userBarWidth = `${Math.max((currentUserAmount / maxBarValue) * 100, 5)}%`;
+  const regionBarWidth = `${Math.max((currentRegionAmount / maxBarValue) * 100, 5)}%`;
 
   const hasEnoughData = result && result.sampleSize >= MIN_USERS && result.regionalAverage > 0;
+  const hasUserData = categoryCount > 0;
 
   return (
     <SafeAreaView style={s.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
       <View style={s.topBar}>
         <Text style={s.title}>Média da Região</Text>
         <TouchableOpacity style={s.citySelector} onPress={handleUseLocation} disabled={loadingCity}>
@@ -136,7 +147,7 @@ export default function CompareScreen() {
           <View style={s.cardBlock}>
             <ActivityIndicator color={theme.accent} style={{ marginVertical: 40 }} />
           </View>
-        ) : result && !hasEnoughData ? (
+        ) : (!hasEnoughData && !hasUserData) ? (
           <View style={s.cardBlock}>
             <View style={s.emptyBox}>
               <Ionicons name="people-outline" size={24} color="#9CA3AF" />
@@ -144,14 +155,16 @@ export default function CompareScreen() {
               <Text style={s.emptyText}>Ainda não há dados suficientes para comparar sua região.</Text>
             </View>
           </View>
-        ) : hasEnoughData ? (
+        ) : (hasEnoughData || hasUserData) ? (
           <View style={s.mainCard}>
             <View style={s.cardHeader}>
               <Text style={s.cardCategory}>{selectedCategory}</Text>
-              <View style={s.badge}>
+              {hasEnoughData && (
+                <View style={s.badge}>
                 <Ionicons name="people" size={12} color="#6B7280" />
-                <Text style={s.badgeTxt}>{result.sampleSize} amostras</Text>
-              </View>
+                  <Text style={s.badgeTxt}>{result?.sampleSize} amostras</Text>
+                </View>
+              )}
             </View>
 
             <View style={s.barsContainer}>
@@ -161,11 +174,12 @@ export default function CompareScreen() {
                   <Text style={s.barSub}>{categoryCount} {categoryCount === 1 ? 'transação' : 'transações'}</Text>
                 </View>
                 <View style={s.barTrack}>
-                  <View style={[s.barFill, { width: userBarWidth as any, backgroundColor: result.status === 'above_average' ? '#EF4444' : theme.accent }]} />
+                  <View style={[s.barFill, { width: userBarWidth as any, backgroundColor: result?.status === 'above_average' ? '#EF4444' : theme.accent }]} />
                 </View>
-                <Text style={s.barValue}>{fmt(result.userAmount)}</Text>
+                <Text style={s.barValue}>{fmt(currentUserAmount)}</Text>
               </View>
 
+              {hasEnoughData ? (
               <View style={s.barRow}>
                 <View style={s.barLabelContainer}>
                   <Text style={s.barLabel}>Região</Text>
@@ -174,29 +188,38 @@ export default function CompareScreen() {
                 <View style={s.barTrack}>
                   <View style={[s.barFill, { width: regionBarWidth as any, backgroundColor: '#E5E7EB' }]} />
                 </View>
-                <Text style={s.barValue}>{fmt(result.regionalAverage)}</Text>
+                <Text style={s.barValue}>{fmt(result?.regionalAverage ?? 0)}</Text>
               </View>
+              ) : (
+                <View style={[s.barRow, { paddingVertical: 10, justifyContent: 'center' }]}>
+                  <Text style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>Ainda não há dados suficientes de outros usuários para comparar esta categoria na sua região.</Text>
+                </View>
+              )}
             </View>
 
+            {hasEnoughData && (
+              <>
             <View style={s.divider} />
 
             <View style={s.resultFooter}>
-              <View style={[s.iconWrap, { backgroundColor: result.status === 'above_average' ? '#FEE2E2' : result.status === 'below_average' ? '#D1FAE5' : '#F3F4F6' }]}>
+              <View style={[s.iconWrap, { backgroundColor: result?.status === 'above_average' ? '#FEE2E2' : result?.status === 'below_average' ? '#D1FAE5' : '#F3F4F6' }]}>
                 <Ionicons 
-                  name={result.status === 'above_average' ? 'warning' : result.status === 'below_average' ? 'trending-down' : 'checkmark-circle'} 
+                  name={result?.status === 'above_average' ? 'warning' : result?.status === 'below_average' ? 'trending-down' : 'checkmark-circle'} 
                   size={22} 
-                  color={result.status === 'above_average' ? '#EF4444' : result.status === 'below_average' ? '#10B981' : '#4B5563'} 
+                  color={result?.status === 'above_average' ? '#EF4444' : result?.status === 'below_average' ? '#10B981' : '#4B5563'} 
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[s.resultTitle, { color: result.status === 'above_average' ? '#991B1B' : result.status === 'below_average' ? '#065F46' : '#374151' }]}>
-                  {result.status === 'above_average' ? `${Math.abs(result.differencePercentage).toFixed(1)}% acima da média` :
-                   result.status === 'below_average' ? `${Math.abs(result.differencePercentage).toFixed(1)}% abaixo da média` :
+                <Text style={[s.resultTitle, { color: result?.status === 'above_average' ? '#991B1B' : result?.status === 'below_average' ? '#065F46' : '#374151' }]}>
+                  {result?.status === 'above_average' ? `${Math.abs(result.differencePercentage).toFixed(1)}% acima da média` :
+                   result?.status === 'below_average' ? `${Math.abs(result.differencePercentage).toFixed(1)}% abaixo da média` :
                    'Dentro da média regional'}
                 </Text>
-                <Text style={s.resultDesc}>A diferença é de {fmt(Math.abs(result.differenceAmount))}</Text>
+                <Text style={s.resultDesc}>A diferença é de {fmt(Math.abs(result?.differenceAmount ?? 0))}</Text>
               </View>
             </View>
+              </>
+            )}
           </View>
         ) : null}
 
@@ -210,6 +233,7 @@ export default function CompareScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

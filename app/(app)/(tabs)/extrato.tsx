@@ -15,6 +15,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -60,7 +62,7 @@ const normalizeTx = (tx: any, index: number) => {
     ...tx,
     id: asText(tx.id, `tx-${index}`),
     type,
-    category,
+    category: category.trim(),
     description: asText(tx.description, 'Transação'),
     amount: asNumber(tx.amount),
     date: asDate(tx.date ?? tx.createdAt ?? tx.created_at).toISOString(),
@@ -75,13 +77,13 @@ export default function ExtratoScreen() {
   const [filter, setFilter] = useState('Todos');
   const [selectedTx, setSelectedTx] = useState<any>(null);
 
-  const filtered = useMemo(() => {
-    const safeTransactions = Array.isArray(transactions)
-      ? transactions
-          .map((tx, index) => normalizeTx(tx, index))
-          .filter(Boolean)
+  const safeTransactions = useMemo(() => {
+    return Array.isArray(transactions)
+      ? transactions.map((tx, index) => normalizeTx(tx, index)).filter(Boolean)
       : [];
+  }, [transactions]);
 
+  const filtered = useMemo(() => {
     let list = safeTransactions as any[];
 
     if (filter === 'Todos') {
@@ -101,9 +103,10 @@ export default function ExtratoScreen() {
     }
 
     return list.sort((a, b) => asDate(b.date).getTime() - asDate(a.date).getTime());
-  }, [transactions, filter, search]);
+  }, [safeTransactions, filter, search]);
 
-  const totalInc = filtered
+  // Total de receitas fica fixo no global independente do filtro, como solicitado
+  const totalInc = safeTransactions
     .filter((t) => t?.type === 'income')
     .reduce((sum, tx) => sum + asNumber(tx.amount), 0);
 
@@ -143,6 +146,7 @@ export default function ExtratoScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
       <View style={s.header}>
         <Text style={s.title} numberOfLines={1}>Extrato</Text>
         <TouchableOpacity
@@ -268,6 +272,7 @@ export default function ExtratoScreen() {
           );
         }}
       />
+      </KeyboardAvoidingView>
 
       <Modal visible={!!selectedTx} animationType="slide" transparent onRequestClose={() => setSelectedTx(null)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setSelectedTx(null)}>
@@ -340,22 +345,22 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
   title: { fontSize: 24, fontWeight: '800', color: '#111827', flex: 1, minWidth: 0 },
   iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
-  summary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginHorizontal: 20, marginBottom: 16 },
-  summaryItem: { flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 8, borderRadius: 20 },
+  summary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginHorizontal: 20, marginBottom: 20 },
+  summaryItem: { flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
   summaryLabel: { fontSize: 12, color: '#4B5563', fontWeight: '600', marginBottom: 4 },
   summaryValue: { fontSize: 15, fontWeight: '800', minWidth: 0 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: '#F1F5F9', borderRadius: 20, marginBottom: 12, height: 52, paddingHorizontal: 4 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: '#F8FAFC', borderRadius: 16, marginBottom: 16, height: 56, paddingHorizontal: 8, borderWidth: 1, borderColor: '#F1F5F9' },
   searchInput: { flex: 1, minWidth: 0, paddingHorizontal: 10, fontSize: 15, color: '#111827', fontWeight: '500' },
   clearSearchBtn: { paddingRight: 12, paddingVertical: 10 },
-  filtersWrap: { flexGrow: 0, minHeight: 48, marginBottom: 8 },
-  filtersContent: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },
-  chip: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#F1F5F9' },
+  filtersWrap: { flexGrow: 0, minHeight: 48, marginBottom: 16 },
+  filtersContent: { paddingHorizontal: 20, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  chip: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, backgroundColor: '#F1F5F9', justifyContent: 'center', borderWidth: 1, borderColor: 'transparent' },
   chipActive: { backgroundColor: '#111827' },
   chipTxt: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
   chipTxtActive: { color: '#fff', fontWeight: '700' },
   listContent: { paddingBottom: 120 },
-  dateGroup: { fontSize: 12, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  txCard: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 28, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
+  dateGroup: { fontSize: 12, fontWeight: '800', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
+  txCard: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: '#F8FAFC', marginBottom: 16 },
   txRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, gap: 14, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
   txIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   txTextBlock: { flex: 1, minWidth: 0 },

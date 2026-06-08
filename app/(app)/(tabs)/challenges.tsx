@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -153,7 +153,7 @@ export default function ChallengesScreen() {
 
       {/* Modal Criar Desafio */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={s.overlay}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheet}>
             <Text style={s.sheetTitle}>Novo Desafio</Text>
             
@@ -172,12 +172,12 @@ export default function ChallengesScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal Contribuir */}
       <Modal visible={contribModalVisible} animationType="fade" transparent>
-        <View style={s.overlayCenter}>
+        <KeyboardAvoidingView style={s.overlayCenter} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={s.sheetCenter}>
             <Text style={s.sheetTitle}>Contribuir</Text>
             <Text style={s.label}>Valor (R$)</Text>
@@ -192,7 +192,7 @@ export default function ChallengesScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>

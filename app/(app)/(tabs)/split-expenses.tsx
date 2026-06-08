@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFinancialTheme } from '@/hooks/useFinancialTheme';
 import { parseCurrencyInput } from '@/utils/currency';
@@ -121,7 +121,7 @@ export default function SplitExpensesScreen() {
 
       {/* Modal: Novo grupo */}
       <Modal visible={groupModal} animationType="slide" transparent onRequestClose={() => setGroupModal(false)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setGroupModal(false)}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <TouchableOpacity activeOpacity={1} style={s.sheet}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Novo grupo</Text>
@@ -133,12 +133,12 @@ export default function SplitExpensesScreen() {
               <Text style={s.saveBtnTxt}>Criar grupo</Text>
             </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal: Nova despesa */}
       <Modal visible={!!expenseModal} animationType="slide" transparent onRequestClose={() => setExpenseModal(null)}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setExpenseModal(null)}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <TouchableOpacity activeOpacity={1} style={s.sheet}>
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Nova despesa</Text>
@@ -158,7 +158,7 @@ export default function SplitExpensesScreen() {
               <Text style={s.saveBtnTxt}>Adicionar despesa</Text>
             </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

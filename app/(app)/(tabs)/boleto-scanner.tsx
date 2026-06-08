@@ -15,6 +15,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,6 +24,56 @@ const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', curren
 
 function cardLimit(card: CreditCard) {
   return (card as any).limitAmount || card.limit || 0;
+}
+
+// Extrator Inteligente de QR Code PIX (Padrão EMV)
+function parsePix(payload: string): ParsedBoleto | null {
+  if (!payload.startsWith('000201')) return null;
+  let i = 0;
+  let pixAmount = 0;
+  let pixName = 'Pagamento PIX';
+  
+  while (i < payload.length) {
+    const id = payload.substring(i, i + 2);
+    const len = parseInt(payload.substring(i + 2, i + 4), 10);
+    if (isNaN(len)) break;
+    const val = payload.substring(i + 4, i + 4 + len);
+    if (id === '54') pixAmount = parseFloat(val);
+    if (id === '59') pixName = `PIX - ${val}`;
+    i += 4 + len;
+  }
+  return {
+    original: payload, barcode: payload,
+    amount: pixAmount, amountText: fmt(pixAmount),
+    dueDate: null,
+    bankName: pixName,
+    type: 'pix' as any,
+    warnings: [],
+  };
+}
+
+// Função para corrigir fuso horário do vencimento e evitar mudança de dia
+function validateAndFixDueDate(parsed: ParsedBoleto): ParsedBoleto {
+  if (!parsed.dueDate) return parsed;
+  const due = new Date(parsed.dueDate);
+  if (isNaN(due.getTime())) {
+    parsed.dueDate = null;
+    return parsed;
+  }
+  // Garante que a data fique no meio do dia para evitar que o fuso horário (UTC vs GMT-3) jogue para o dia anterior
+  due.setUTCHours(12, 0, 0, 0);
+  parsed.dueDate = due.toISOString();
+  return parsed;
+}
+
+function isBoletoExpired(dueDateStr: string): boolean {
+  if (!dueDateStr) return false;
+  const due = new Date(dueDateStr);
+  if (isNaN(due.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  return due < today;
 }
 
 export default function BoletoScannerScreen() {
@@ -70,38 +122,46 @@ export default function BoletoScannerScreen() {
     setSelectedCardId('');
   };
 
-  const handleParse = () => {
-    if (!code.trim()) {
-      Alert.alert('Erro', 'Cole, digite ou escaneie o codigo do boleto.');
-      return;
-    }
-
-    const parsed = parseBoletoCode(code);
+  const processCode = (rawData: string) => {
+    let parsed = parseBoletoCode(rawData) || parsePix(rawData);
     if (!parsed) {
-      Alert.alert(
-        'Formato invalido',
-        'Use codigo de barras bancario de 44 digitos, linha digitavel bancaria de 47 digitos ou conta de consumo de 48 digitos.'
-      );
-      return;
-    }
-
-    applyParsedResult(parsed);
-  };
-
-  const handleBarcodeScanned = ({ data }: BarcodeScanningResult) => {
-    if (scanned) return;
-    setScanned(true);
-
-    const parsed = parseBoletoCode(data);
-    if (!parsed) {
-      Alert.alert('Codigo lido', 'O codigo escaneado nao parece ser boleto ou conta de consumo.', [
+      Alert.alert('Código não reconhecido', `Este formato não é suportado ou a leitura falhou. Tente digitar a linha.`, [
         { text: 'Tentar de novo', onPress: () => setScanned(false) },
       ]);
       return;
     }
 
+    parsed = validateAndFixDueDate(parsed);
+
+    if (parsed.dueDate && isBoletoExpired(parsed.dueDate)) {
+      Alert.alert(
+        'Boleto vencido',
+        `Este boleto venceu em ${formatBoletoDueDate(parsed.dueDate)}. Não é possível cadastrar ou pagar boletos vencidos pelo app.`,
+        [{ text: 'OK', onPress: () => { resetBoletoInput(); setCameraOpen(false); } }]
+      );
+      return;
+    }
+
+    if (!parsed.dueDate) {
+      Alert.alert('Aviso', 'Não foi possível identificar o vencimento deste boleto de forma segura. Verifique os dados antes de continuar.');
+    }
+
     applyParsedResult(parsed);
     setCameraOpen(false);
+  };
+
+  const handleParse = () => {
+    if (!code.trim()) {
+      Alert.alert('Erro', 'Cole, digite ou escaneie o código do boleto.');
+      return;
+    }
+    processCode(code);
+  };
+
+  const handleBarcodeScanned = ({ data }: BarcodeScanningResult) => {
+    if (scanned) return;
+    setScanned(true);
+    processCode(data);
   };
 
   const validatePayment = () => {
@@ -139,8 +199,8 @@ export default function BoletoScannerScreen() {
         type: 'expense',
         description: `${result.bankName} - boleto${result.dueDate ? ` venc. ${formatBoletoDueDate(result.dueDate)}` : ''}`,
         amount: result.amount,
-        category: result.type === 'utility' ? 'Moradia' : 'Outros',
-        icon: result.type === 'utility' ? 'flash-outline' : 'barcode-outline',
+        category: result.type === 'utility' ? 'Moradia' : (result.type === 'pix' as any ? 'Outros' : 'Outros'),
+        icon: result.type === 'pix' as any ? 'qr-code-outline' : (result.type === 'utility' ? 'flash-outline' : 'barcode-outline'),
         paymentMethod,
         creditCardId: paymentMethod === 'credit_card' ? selectedCard?.id : undefined,
         creditCardName: paymentMethod === 'credit_card' ? selectedCard?.name : undefined,
@@ -172,6 +232,7 @@ export default function BoletoScannerScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
       <View style={s.header}>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color="#111827" />
@@ -299,6 +360,7 @@ export default function BoletoScannerScreen() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>
         <View style={s.cameraScreen}>
@@ -306,7 +368,7 @@ export default function BoletoScannerScreen() {
             style={s.camera}
             facing="back"
             barcodeScannerSettings={{
-              barcodeTypes: ['qr', 'pdf417', 'code128', 'code39', 'ean13', 'itf14'],
+              barcodeTypes: ['qr', 'pdf417', 'itf14', 'code128', 'code39', 'codabar', 'ean13', 'ean8', 'upc_a', 'upc_e'],
             }}
             onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
           >
@@ -337,16 +399,16 @@ const s = StyleSheet.create({
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
   title: { fontSize: 18, fontWeight: '800', color: '#111827', flex: 1, minWidth: 0, textAlign: 'center' },
   content: { padding: 20, paddingBottom: 80 },
-  cameraButton: { height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginBottom: 16 },
-  cameraButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: '#EEF2F7', marginBottom: 16 },
-  fieldLabel: { fontSize: 13, fontWeight: '800', color: '#374151', marginBottom: 8, marginTop: 4 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, minHeight: 96, fontSize: 15, color: '#111827', backgroundColor: '#F9FAFB', textAlignVertical: 'top', marginBottom: 14 },
-  parseButton: { height: 48, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
-  parseButtonText: { fontSize: 14, fontWeight: '800' },
-  clearButton: { height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 10, backgroundColor: '#F3F4F6' },
-  clearButtonText: { fontSize: 13, fontWeight: '800', color: '#6B7280' },
-  resultCard: { backgroundColor: '#fff', borderRadius: 22, padding: 18, borderWidth: 1, borderColor: '#D1FAE5' },
+  cameraButton: { height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  cameraButtonText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  card: { backgroundColor: '#fff', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#EEF2F7', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 6, elevation: 1 },
+  fieldLabel: { fontSize: 14, fontWeight: '800', color: '#374151', marginBottom: 10, marginTop: 4 },
+  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, minHeight: 110, fontSize: 16, color: '#111827', backgroundColor: '#F9FAFB', textAlignVertical: 'top', marginBottom: 16 },
+  parseButton: { height: 56, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
+  parseButtonText: { fontSize: 15, fontWeight: '800' },
+  clearButton: { height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 12, backgroundColor: '#F8FAFC' },
+  clearButtonText: { fontSize: 14, fontWeight: '800', color: '#64748B' },
+  resultCard: { backgroundColor: '#fff', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: '#D1FAE5', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
   resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   resultIcon: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   resultTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
@@ -357,14 +419,14 @@ const s = StyleSheet.create({
   infoValueSmall: { flex: 1, minWidth: 0, textAlign: 'right', fontSize: 11, fontWeight: '700', color: '#374151' },
   warningBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, backgroundColor: '#FFFBEB', borderRadius: 14, borderWidth: 1, borderColor: '#FDE68A', marginVertical: 14 },
   warningText: { flex: 1, minWidth: 0, fontSize: 12, color: '#92400E', lineHeight: 17 },
-  paymentList: { gap: 8, marginBottom: 18 },
-  paymentOption: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#fff' },
-  paymentText: { fontSize: 14, fontWeight: '800', color: '#374151' },
-  paymentSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
-  confirmBtn: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  confirmBtnTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  secondaryBtn: { height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 10, backgroundColor: '#F3F4F6' },
-  secondaryBtnText: { color: '#6B7280', fontSize: 14, fontWeight: '800' },
+  paymentList: { gap: 10, marginBottom: 24 },
+  paymentOption: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff' },
+  paymentText: { fontSize: 15, fontWeight: '800', color: '#374151' },
+  paymentSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  confirmBtn: { height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  confirmBtnTxt: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  secondaryBtn: { height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 12, backgroundColor: '#F8FAFC' },
+  secondaryBtnText: { color: '#64748B', fontSize: 15, fontWeight: '800' },
   disabled: { opacity: 0.6 },
   cameraScreen: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1 },

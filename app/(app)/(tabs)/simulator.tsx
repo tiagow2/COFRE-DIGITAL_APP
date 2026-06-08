@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -54,6 +54,7 @@ export default function SimulatorScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
       <View style={s.header}>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
@@ -141,6 +142,7 @@ export default function SimulatorScreen() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -152,14 +154,14 @@ const s = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700', color: '#111827', flex: 1, minWidth: 0, textAlign: 'center' },
   content: { padding: 20, paddingBottom: 140 },
   description: { fontSize: 15, color: '#6B7280', marginBottom: 20, lineHeight: 22 },
-  card: { backgroundColor: '#fff', padding: 24, borderRadius: 32, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2, marginBottom: 24 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  input: { borderWidth: 0, backgroundColor: '#F1F5F9', borderRadius: 16, padding: 16, fontSize: 16, marginBottom: 16, color: '#111827', fontWeight: '600' },
-  btn: { backgroundColor: '#111827', padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 8 },
-  btnTxt: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  resultsCard: { backgroundColor: '#fff', padding: 24, borderRadius: 32, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
-  resTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 4, minWidth: 0 },
-  invested: { fontSize: 12, color: '#6B7280', marginBottom: 20, flexShrink: 1, minWidth: 0 },
+  card: { backgroundColor: '#fff', padding: 24, borderRadius: 28, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3, marginBottom: 24, borderWidth: 1, borderColor: '#F8FAFC' },
+  label: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 8 },
+  input: { borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB', borderRadius: 16, padding: 16, fontSize: 16, marginBottom: 20, color: '#111827', fontWeight: '500' },
+  btn: { backgroundColor: '#111827', padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 8, height: 56, justifyContent: 'center' },
+  btnTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  resultsCard: { backgroundColor: '#fff', padding: 24, borderRadius: 28, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: '#F8FAFC' },
+  resTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 4, minWidth: 0 },
+  invested: { fontSize: 13, color: '#6B7280', marginBottom: 20, flexShrink: 1, minWidth: 0 },
   resItem: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', overflow: 'hidden', minWidth: 0 },
   resIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   resName: { fontSize: 13, fontWeight: '600', color: '#111827', flexShrink: 1, minWidth: 0 },

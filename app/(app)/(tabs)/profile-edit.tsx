@@ -19,6 +19,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -163,6 +165,7 @@ export default function ProfileEditScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
       <View style={s.header}>
         <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color="#111827" />
@@ -246,9 +249,10 @@ export default function ProfileEditScreen() {
           <Text style={s.saveTxt}>{saving ? 'Salvando...' : 'Salvar alterações'}</Text>
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal visible={signatureModal} animationType="slide" onRequestClose={closeSignatureModal}>
-        <SafeAreaView style={s.safe}>
+        <KeyboardAvoidingView style={s.safe} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
           <View style={s.signatureModalHeader}>
             <View>
               <Text style={s.signatureModalTitle}>Assinatura digital</Text>
@@ -267,7 +271,7 @@ export default function ProfileEditScreen() {
               onSave={handleSignatureOK}
             />
           </View>
-        </SafeAreaView>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -290,18 +294,18 @@ const s = StyleSheet.create({
   smallBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   smallBtnGhost: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 14, backgroundColor: '#FEE2E2' },
   smallBtnGhostText: { color: '#EF4444', fontWeight: '700', fontSize: 13 },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 18, marginBottom: 18, borderWidth: 1, borderColor: '#F3F4F6' },
-  fieldLabel: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 8 },
-  fieldTitle: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  card: { backgroundColor: '#fff', borderRadius: 24, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: '#F8FAFC', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1 },
+  fieldLabel: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 8 },
+  fieldTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
   fieldHint: { fontSize: 12, color: '#6B7280', marginTop: 3 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, fontSize: 15, color: '#111827', backgroundColor: '#F9FAFB', marginBottom: 16 },
+  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#111827', backgroundColor: '#F9FAFB', marginBottom: 20 },
   signatureHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   iconOnlyBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  signatureBox: { height: 132, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', backgroundColor: '#F9FAFB', overflow: 'hidden' },
+  signatureBox: { height: 160, borderRadius: 20, borderWidth: 1.5, borderStyle: 'dashed', backgroundColor: '#F9FAFB', overflow: 'hidden' },
   signatureImage: { width: '100%', height: '100%' },
   signatureEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
   signatureEmptyText: { color: '#6B7280', fontWeight: '600', textAlign: 'center', marginTop: 8 },
-  saveBtn: { borderRadius: 16, height: 54, alignItems: 'center', justifyContent: 'center' },
+  saveBtn: { borderRadius: 16, height: 56, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   saveTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
   signatureModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 20 },
   signatureModalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
