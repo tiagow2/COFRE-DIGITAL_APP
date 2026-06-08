@@ -50,10 +50,10 @@ export class FinanceRepository {
       ]
     );
 
-    await this.addToSyncQueue('create', 'transactions', id, { ...tx, id, date });
+    await this.addToSyncQueue('create', 'transactions', id, { ...tx, id, userId: this.userId, date });
 
     debugLogger.log('Transação adicionada', { id, description: tx.description });
-    return { ...tx, id, date } as Transaction;
+    return { ...tx, id, userId: this.userId, date } as Transaction;
   }
 
   async getTransactions(): Promise<Transaction[]> {
@@ -85,9 +85,9 @@ export class FinanceRepository {
       [id, this.userId, asText(budget.category, 'Outros'), asNumber(budget.limit), asText(budget.period, 'monthly'), asText(budget.color, '#1565C0'), now, now, 0]
     );
 
-    await this.addToSyncQueue('create', 'budgets', id, { ...budget, id });
+    await this.addToSyncQueue('create', 'budgets', id, { ...budget, id, userId: this.userId });
     debugLogger.log('Orçamento adicionado', { id, category: budget.category });
-    return { ...budget, id } as Budget;
+    return { ...budget, id, userId: this.userId } as Budget;
   }
 
   async getBudgets(): Promise<Budget[]> {
@@ -108,9 +108,9 @@ export class FinanceRepository {
       [id, this.userId, asText(goal.name, 'Meta'), asNumber(goal.target), 0, asNumber(goal.monthly), asText(goal.icon, 'flag-outline'), asText(goal.color, '#1565C0'), now, now, 0]
     );
 
-    await this.addToSyncQueue('create', 'goals', id, { ...goal, id, current: 0 });
+    await this.addToSyncQueue('create', 'goals', id, { ...goal, id, userId: this.userId, current: 0 });
     debugLogger.log('Meta adicionada', { id, name: goal.name });
-    return { ...goal, id, current: 0 } as Goal;
+    return { ...goal, id, userId: this.userId, current: 0 } as Goal;
   }
 
   async getGoals(): Promise<Goal[]> {
@@ -148,9 +148,9 @@ export class FinanceRepository {
       [id, this.userId, asText(card.name, 'Cartão'), asText(card.lastDigits, '0000'), asNumber(card.limit), asNumber(card.used), asText(card.dueDate), asText(card.color, '#1565C0'), now, now, 0]
     );
 
-    await this.addToSyncQueue('create', 'creditCards', id, { ...card, id });
+    await this.addToSyncQueue('create', 'creditCards', id, { ...card, id, userId: this.userId });
     debugLogger.log('Cartão adicionado', { id, name: card.name });
-    return { ...card, id } as CreditCard;
+    return { ...card, id, userId: this.userId } as CreditCard;
   }
 
   async getCreditCards(): Promise<CreditCard[]> {
@@ -179,9 +179,9 @@ export class FinanceRepository {
       [id, this.userId, asText(loan.name, 'Empréstimo'), asNumber(loan.total), asNumber(loan.paid), asNumber(loan.installments), asNumber(loan.current), asNumber(loan.rate), asNumber(loan.monthly), now, now, 0]
     );
 
-    await this.addToSyncQueue('create', 'loans', id, { ...loan, id });
+    await this.addToSyncQueue('create', 'loans', id, { ...loan, id, userId: this.userId });
     debugLogger.log('Empréstimo adicionado', { id, name: loan.name });
-    return { ...loan, id } as Loan;
+    return { ...loan, id, userId: this.userId } as Loan;
   }
 
   async getLoans(): Promise<Loan[]> {
@@ -201,9 +201,9 @@ export class FinanceRepository {
       [id, this.userId, asText(challenge.title, 'Desafio'), asNumber(challenge.targetAmount), 0, asText(challenge.deadline, now), 'active', asText(challenge.medalIcon, 'trophy-outline'), now, now, 0]
     );
 
-    await this.addToSyncQueue('create', 'challenges', id, { ...challenge, id, currentAmount: 0, status: 'active' });
+    await this.addToSyncQueue('create', 'challenges', id, { ...challenge, id, userId: this.userId, currentAmount: 0, status: 'active' });
     debugLogger.log('Desafio adicionado', { id, title: challenge.title });
-    return { ...challenge, id, currentAmount: 0, status: 'active' } as Challenge;
+    return { ...challenge, id, userId: this.userId, currentAmount: 0, status: 'active' } as Challenge;
   }
 
   async getChallenges(): Promise<Challenge[]> {

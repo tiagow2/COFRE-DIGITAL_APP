@@ -12,6 +12,8 @@ export type TxType = 'income' | 'expense';
 
 export interface Transaction {
   id: string;
+  userId?: string;
+  user_id?: string;
   type: TxType;
   description: string;
   amount: number;
@@ -30,6 +32,8 @@ export interface Transaction {
 
 export interface Budget {
   id: string;
+  userId?: string;
+  user_id?: string;
   category: string;
   limit: number;
   period: string;
@@ -38,6 +42,8 @@ export interface Budget {
 
 export interface Goal {
   id: string;
+  userId?: string;
+  user_id?: string;
   name: string;
   target: number;
   current: number;
@@ -48,6 +54,8 @@ export interface Goal {
 
 export interface CreditCard {
   id: string;
+  userId?: string;
+  user_id?: string;
   name: string;
   lastDigits: string;
   limit: number;
@@ -58,6 +66,8 @@ export interface CreditCard {
 
 export interface Loan {
   id: string;
+  userId?: string;
+  user_id?: string;
   name: string;
   total: number;
   paid: number;
@@ -69,6 +79,8 @@ export interface Loan {
 
 export interface Challenge {
   id: string;
+  userId?: string;
+  user_id?: string;
   title: string;
   targetAmount: number;
   currentAmount: number;
