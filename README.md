@@ -4,9 +4,9 @@
 
 O **Cofre Digital** é um aplicativo de controle financeiro pessoal desenvolvido em React Native com Expo, com
 30 requisitos funcionais e 10 não funcionais.  
-As duas primeiras sprints estabeleceram a base da aplicação e as funcionalidades essenciais de segurança e
-gestão financeira. A terceira sprint (proposta) visa completar os itens parcialmente implementados e acrescentar
-funcionalidades de alto valor percebido.
+As três sprints planejaram a base da aplicação, as funcionalidades essenciais de segurança, gestão financeira
+e inteligência de dados. O aplicativo agora possui persistência local robusta, navegação ágil, backend isolado
+e uma interface Premium e responsiva.
 
 ---
 
@@ -47,85 +47,62 @@ comprovante), gestão de cartões de crédito e um backend pronto para sincroniz
 
 ---
 
-## Sprint 3 – Experiência Financeira Avançada *(proposta)*
+## Sprint 3 – Experiência Financeira Avançada *(Concluída)*
 
-**Objetivo:** Completar requisitos parcialmente implementados, adicionar funcionalidades de alto impacto visual e
-prático, e iniciar cobertura de testes.
+**Objetivo:** Finalizar funcionalidades complexas (Dívidas, Scanner, GPS), aplicar o polimento visual definitivo (Responsividade, Tema Dinâmico, Glassmorphism) e preparar para a nuvem.
 
-### Tarefas propostas
+### Entregas Realizadas
 
-| Tarefa                                         | RFs / RNFs     | Justificativa / Detalhamento                                   |
+| Entregável                                     | RFs / RNFs     | Detalhamento                                                   |
 |------------------------------------------------|----------------|----------------------------------------------------------------|
-| Busca por voz no extrato                       | RF8            | Integrar `react-native-voice` para ativar microfone e filtrar transações por comando de voz. Baixo esforço, alto impacto em apresentações. |
-| Orçamentos por período (semanal, trimestral)   | RF5            | A lógica de orçamento mensal já existe; basta parametrizar o período e ajustar os cálculos de progresso proporcionalmente. |
-| Locais salvos com Google Places                | RF11           | Busca lugares próximos pelo Google Places e permite verificar manualmente se o usuário está perto de um local salvo. Sem notificações para manter compatibilidade com Expo Go. |
-| Conexão da comparação regional com backend     | RF19, RNF7     | Usar a localização (GPS) para obter a cidade e consultar médias reais do backend. Substituir os dados estáticos da tela `compare.tsx`. |
-| Tema dinâmico completo                         | RF27           | Com base no saldo, alterar cores de fundo, navbar e cards (verde para positivo, vermelho para negativo). Usar Context API para gerenciar o tema. |
-| Gamificação dos desafios de economia           | RF30           | Aproveitar a estrutura de metas para criar desafios com progresso real e medalhas virtuais (pode ser apenas emblemas visuais). |
-| Categorias com ícones personalizáveis          | RF25           | Permitir que o usuário escolha ícones alternativos para cada categoria (ex: lista de Ionicons disponíveis). |
-| Fluxo de caixa futuro (12 meses)               | RF23, RF24     | Expandir o gráfico de 6 para 12 meses, considerando contas fixas (empréstimos) e receitas futuras cadastradas. |
-| Testes unitários para cálculos financeiros     | RNF10          | Criar testes com Jest para funções críticas: `getBalance`, `getBudgetStatus`, `suggestCategory`, simulações de investimento. |
+| Scanner de Boletos e PIX                       | RF16, RNF5     | Implementação da regra da Febraban para validar data e proibir boletos vencidos. Suporte à extração de valores via PIX (EMV QR Code). |
+| Gestão de Dívidas e Financiamentos             | RF10           | CRUD em SQLite com proteção de pagamento: impede pagamento se não houver saldo ou limite no cartão, alertando sobre juros compostos. |
+| Comparação de Média da Região Real             | RF19, RNF7     | Integração real com o backend. Substituição de dados mockados por validação real, resguardando total anonimato dos usuários (LGPD). |
+| Tema Dinâmico e UI/UX Responsivo               | RF27, RNF9     | Cores globais do app mudam com o saldo. Implementação de `KeyboardAvoidingView` em todo o projeto. Cartões com sombras suaves. |
+| Lembretes Geolocalizados (GPS)                 | RF17           | Integração com Nominatim (OSM) gratuita. Alertas visuais internos ao se aproximar de locais cadastrados. |
+| Exportação do IR Inteligente                   | RF28           | Geração de arquivo estruturado para a Receita (simulação), agrupando Receitas e Gastos Dedutíveis do ano letivo. |
+| Otimizações de Desempenho e Remoções           | RF8, RF12, RF29| Para manter a integridade acadêmica do app, falsos mocks como OCR visual e Importação OFX fake foram extraídos. |
 
-### Por que essas tarefas?
-
-- **Completam itens já iniciados:** RF5, RF8, RF11, RF19, RF27, RF30, RF25, RF23, RNF10.  
-- **Mantém o app funcional no Expo Go:** Notificações e monitoramento em background foram removidos; a tela de locais usa verificação manual de proximidade.  
-- **Oferecem um salto de qualidade percebida:** Busca por voz, tema dinâmico e gamificação são diferenciais visuais imediatos para apresentações e avaliações.  
-- **Trazem dados reais para a comparação regional:** O backend já está pronto, faltando apenas a integração com GPS e chamada à API.  
-- **Iniciam a cobertura de testes:** Fundamental para garantir a estabilidade dos cálculos financeiros à medida que o app cresce.
-
-### Resultado esperado
-
-Ao final da Sprint 3, o aplicativo terá:
-
-- Extrato com comando de voz funcional.
-- Orçamentos flexíveis (semanal, trimestral, etc.).
-- Notificações locais reais (em desenvolvimento ou preparadas para build).
-- Comparação regional com dados do backend em tempo real.
-- Tema que se adapta automaticamente ao saldo do usuário.
-- Desafios de economia com progresso e recompensas visuais.
-- Ícones de categoria customizáveis.
-- Projeção financeira de 12 meses.
-- Conjunto inicial de testes unitários.
+**Resultado:** O Cofre Digital se transformou de um protótipo em um produto maduro, com lógicas financeiras reais (travas de saldo, cartões e dívidas interligados), visual limpo e preparado para a nuvem.
 
 ---
 
 ## Anexo – Status consolidado dos requisitos
 
-*(Incluído para referência rápida)*
+*(Legenda: ✅ Concluído | 🚫 Removido do Escopo (Foco em dados reais))*
 
 | ID    | Requisito                                              | Status |
 |-------|--------------------------------------------------------|--------|
 | RF1   | Cadastro e autenticação com múltiplos fatores          | ✅     |
 | RF2   | Perfil financeiro com assinatura digital               | ✅     |
 | RF3   | Registro de despesas/receitas com foto do comprovante  | ✅     |
-| RF4   | Categorias de gastos inteligentes                      | 🟡     |
-| RF5   | Orçamentos flexíveis por período                        | ⚪     |
+| RF4   | Categorias de gastos inteligentes                      | ✅     |
+| RF5   | Orçamentos flexíveis por período                       | ✅     |
 | RF6   | Metas de economia com acompanhamento visual            | ✅     |
-| RF7   | Dashboard interativo com widgets                       | 🟡     |
-| RF8   | Extrato completo com busca por voz                     | 🟡     |
+| RF7   | Dashboard interativo com widgets                       | ✅     |
+| RF8   | Extrato completo com busca por voz                     | 🚫     |
 | RF9   | Controle de cartões de crédito múltiplos com alertas   | ✅     |
-| RF10  | Gerenciamento de empréstimos e dívidas                 | 🟡     |
-| RF11  | Notificações push personalizáveis                      | 🟡     |
-| RF12  | Importação automática de extratos bancários (API mock) | ⚪     |
-| RF13  | Relatórios anuais interativos                          | ⚪     |
-| RF14  | Divisão de despesas recorrentes em grupo               | ⚪     |
+| RF10  | Gerenciamento de empréstimos e dívidas                 | ✅     |
+| RF11  | Notificações push personalizáveis (alertas in-app)     | ✅     |
+| RF12  | Importação automática de extratos bancários (API mock) | 🚫     |
+| RF13  | Relatórios anuais interativos                          | ✅     |
+| RF14  | Divisão de despesas recorrentes em grupo               | ✅     |
 | RF15  | Simulador de investimentos com cenários                | ✅     |
-| RF16  | Scanner de código de barras de boletos                 | ⚪     |
-| RF17  | Lembretes geolocalizados de contas                     | ⚪     |
-| RF18  | Orçamento por projeto ou evento                        | ⚪     |
-| RF19  | Comparação de gastos com média da região               | 🟡     |
-| RF20  | Modo offline com sincronização seletiva                | 🟡     |
-| RF21  | Backup criptografado com senha mestra                  | 🟡     |
+| RF16  | Scanner de código de barras de boletos                 | ✅     |
+| RF17  | Lembretes geolocalizados de contas                     | ✅     |
+| RF18  | Orçamento por projeto ou evento                        | ✅     |
+| RF19  | Comparação de gastos com média da região               | ✅     |
+| RF20  | Modo offline com sincronização seletiva                | ✅     |
+| RF21  | Backup criptografado com senha mestra                  | ✅     |
 | RF22  | Planejamento de aposentadoria com projeção             | ✅     |
-| RF23  | Análise de fluxo de caixa futuro                       | 🟡     |
-| RF24  | Previsão de saldo com base em receitas futuras         | ⚪     |
-| RF25  | Categorias com ícones personalizáveis                  | 🟡     |
-| RF26  | Integração com contatos para cobranças                 | ⚪     |
-| RF27  | Tema dinâmico que muda conforme o saldo                | 🟡     |
-| RF28  | Exportação de dados para declaração de imposto de renda| ⚪     |
-| RF29  | Importação de despesas por foto (OCR simulado)         | ⚪     |
-| RF30  | Desafios de economia gamificados                       | 🟡     |
+| RF23  | Análise de fluxo de caixa futuro                       | ✅     |
+| RF24  | Previsão de saldo com base em receitas futuras         | ✅     |
+| RF25  | Categorias com ícones personalizáveis                  | ✅     |
+| RF26  | Integração com contatos para cobranças                 | ✅     |
+| RF27  | Tema dinâmico que muda conforme o saldo                | ✅     |
+| RF28  | Exportação de dados para declaração de imposto de renda| ✅     |
+| RF29  | Importação de despesas por foto (OCR simulado)         | 🚫     |
+| RF30  | Desafios de economia gamificados                       | ✅     |
 
 | RNF   | Requisito                                                          | Status |
 |-------|--------------------------------------------------------------------|--------|
@@ -133,9 +110,57 @@ Ao final da Sprint 3, o aplicativo terá:
 | RNF2  | Persistência com SQLite e criptografia                             | ✅     |
 | RNF3  | Backend Node.js + Express + PostgreSQL                             | ✅     |
 | RNF4  | Autenticação Firebase Auth com TOTP                                | ✅     |
-| RNF5  | Scanner de código de barras                                        | ⚪     |
-| RNF6  | Reconhecimento de voz                                              | ⚪     |
-| RNF7  | Dados anonimizados para médias regionais                           | 🟡     |
+| RNF5  | Scanner de código de barras                                        | ✅     |
+| RNF6  | Reconhecimento de voz                                              | 🚫     |
+| RNF7  | Dados anonimizados para médias regionais                           | ✅     |
 | RNF8  | Funcionamento offline com sincronização                            | ✅     |
-| RNF9  | UI moderna, temas e acessibilidade                                 | 🟡     |
-| RNF10 | Testes automatizados                                               | ⚪     |
+| RNF9  | UI moderna, temas e acessibilidade                                 | ✅     |
+| RNF10 | Testes automatizados (Adiado para focar no APK)                    | 🚫     |
+
+---
+
+## 🚀 Como Rodar o Projeto Localmente (Expo)
+
+Para visualizar o app no seu próprio computador ou no celular usando o aplicativo **Expo Go**:
+
+1. Instale as dependências:
+   ```bash
+   npm install
+   ```
+2. Inicie o servidor do Expo (com limpeza de cache garantida):
+   ```bash
+   npx expo start -c
+   ```
+3. Escaneie o QR Code com o aplicativo Expo Go (Android) ou a câmera do celular (iOS).
+
+---
+
+## 📦 Como Gerar o App (APK e Play Store)
+
+Para gerar o arquivo final do aplicativo, utilize o EAS (Expo Application Services):
+
+1. Faça o login na sua conta do Expo (se ainda não tiver feito):
+   ```bash
+   eas login
+   ```
+2. **Gerar APK de Teste (.apk)** - *Para instalar direto no Android enviando via WhatsApp/Cabo:*
+   ```bash
+   eas build -p android --profile preview
+   ```
+3. **Gerar Arquivo de Produção (.aab)** - *Para publicar oficialmente na Google Play Store:*
+   ```bash
+   eas build -p android --profile production
+   ```
+
+---
+
+## ☁️ Como Rodar o Backend (Média Regional e API)
+
+O aplicativo vem acompanhado de uma pasta `backend` estruturada em Node.js e PostgreSQL, otimizada para implantação gratuita no Render.
+
+Para hospedar gratuitamente:
+1. Crie um banco PostgreSQL no Render.
+2. Crie um Web Service no Render apontando para o seu GitHub, configurando o `Root Directory` como `backend`.
+3. Defina os comandos `Build` (`npm install && npm run build`) e `Start` (`npm start`).
+4. Copie a URL do seu backend gerada pelo Render e coloque no arquivo `.env` da raiz do aplicativo:
+   `EXPO_PUBLIC_API_URL=https://seu-backend.onrender.com`
