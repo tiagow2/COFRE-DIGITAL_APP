@@ -198,21 +198,37 @@ export class SyncService {
     return { avgExpense, userCount };
   }
 
-  async submitRegionalContribution(city: string, category: string, totalExpense: number, periodMonth?: string): Promise<any> {
+  async submitRegionalContribution(city: string, category: string, totalExpense: number, periodMonth?: string, contributionKey?: string): Promise<any> {
     const safeCity = String(city ?? '').trim();
     const safeCategory = String(category ?? '').trim();
     const safeAmount = Number(totalExpense);
     const safePeriodMonth = this.sanitizePeriodMonth(periodMonth);
+    const safeContributionKey = String(contributionKey ?? '').trim().slice(0, 255);
 
     if (!safeCity || !safeCategory || !Number.isFinite(safeAmount) || safeAmount <= 0) {
       throw new Error('City, category and totalExpense are required');
     }
 
-    await query(
-      `INSERT INTO regional_contributions (id, city, category, total_expense, period_month, created_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [uuidv4(), safeCity, safeCategory, safeAmount, safePeriodMonth]
-    );
+    if (safeContributionKey) {
+      await query(
+        `INSERT INTO regional_contributions (id, contribution_key, city, category, total_expense, period_month, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW())
+         ON CONFLICT (contribution_key) WHERE contribution_key IS NOT NULL
+         DO UPDATE SET
+           city = EXCLUDED.city,
+           category = EXCLUDED.category,
+           total_expense = EXCLUDED.total_expense,
+           period_month = EXCLUDED.period_month,
+           created_at = NOW()`,
+        [uuidv4(), safeContributionKey, safeCity, safeCategory, safeAmount, safePeriodMonth]
+      );
+    } else {
+      await query(
+        `INSERT INTO regional_contributions (id, city, category, total_expense, period_month, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [uuidv4(), safeCity, safeCategory, safeAmount, safePeriodMonth]
+      );
+    }
 
     return this.refreshRegionalAverage(safeCity, safeCategory, safePeriodMonth);
   }

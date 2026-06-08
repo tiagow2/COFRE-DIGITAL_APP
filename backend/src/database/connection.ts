@@ -134,6 +134,7 @@ export async function initializeDatabase() {
 
       CREATE TABLE IF NOT EXISTS regional_contributions (
         id UUID PRIMARY KEY,
+        contribution_key VARCHAR(255),
         city VARCHAR(255) NOT NULL,
         category VARCHAR(100) NOT NULL,
         total_expense DECIMAL(10, 2) NOT NULL,
@@ -163,6 +164,8 @@ export async function initializeDatabase() {
       `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS signature_required BOOLEAN DEFAULT false`,
       `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS signature_approved BOOLEAN DEFAULT false`,
       `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS signature_score DECIMAL(5, 3) DEFAULT 0`,
+      `ALTER TABLE regional_contributions ADD COLUMN IF NOT EXISTS contribution_key VARCHAR(255)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_regional_contributions_key ON regional_contributions(contribution_key) WHERE contribution_key IS NOT NULL`,
     ];
     for (const migration of migrations) {
       try {

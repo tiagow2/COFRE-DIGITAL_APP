@@ -55,7 +55,7 @@ export async function getRegionalAverages(req: Request, res: Response) {
  */
 export async function submitRegionalContribution(req: Request, res: Response) {
   try {
-    const { city, category, totalExpense, periodMonth } = req.body;
+    const { city, category, totalExpense, periodMonth, contributionKey } = req.body;
 
     if (!city || !category || totalExpense === undefined) {
       return res.status(400).json({ error: 'City, category and totalExpense are required' });
@@ -65,7 +65,8 @@ export async function submitRegionalContribution(req: Request, res: Response) {
       city,
       category,
       Number(totalExpense),
-      periodMonth
+      periodMonth,
+      contributionKey
     );
 
     res.json({ success: true, ...averages });

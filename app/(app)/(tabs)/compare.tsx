@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CATEGORIES = ['Alimentação', 'Transporte', 'Lazer', 'Saúde', 'Moradia', 'Educação', 'Outros'];
-const MIN_USERS = 5;
+const MIN_USERS = 1;
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const safeDate = (value: unknown) => {
@@ -39,7 +39,7 @@ export default function CompareScreen() {
     const now = new Date();
     return transactions
       .filter((tx) => {
-        const date = safeDate(tx.date || tx.createdAt);
+        const date = safeDate(tx.date);
         return (
           tx.type === 'expense' &&
           (tx.category || '').trim() === selectedCategory &&
@@ -53,7 +53,7 @@ export default function CompareScreen() {
   const categoryCount = useMemo(() => {
     const now = new Date();
     return transactions.filter((tx) => {
-      const date = safeDate(tx.date || tx.createdAt);
+      const date = safeDate(tx.date);
       return (
         tx.type === 'expense' &&
         (tx.category || '').trim() === selectedCategory &&
@@ -162,7 +162,7 @@ export default function CompareScreen() {
               {hasEnoughData && (
                 <View style={s.badge}>
                 <Ionicons name="people" size={12} color="#6B7280" />
-                  <Text style={s.badgeTxt}>{result?.sampleSize} amostras</Text>
+                  <Text style={s.badgeTxt}>{result?.sampleSize} {result?.sampleSize === 1 ? 'amostra' : 'amostras'}</Text>
                 </View>
               )}
             </View>

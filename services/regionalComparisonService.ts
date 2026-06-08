@@ -14,6 +14,7 @@ interface RegionalContribution {
 }
 
 const REQUEST_TIMEOUT_MS = 7000;
+const ANONYMOUS_CONTRIBUTOR_KEY = 'cofre_regional_anonymous_contributor_id';
 
 function asNumber(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -31,6 +32,15 @@ function normalizeKeyPart(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+async function getAnonymousContributorId() {
+  const existing = await AsyncStorage.getItem(ANONYMOUS_CONTRIBUTOR_KEY);
+  if (existing) return existing;
+
+  const next = `anon_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+  await AsyncStorage.setItem(ANONYMOUS_CONTRIBUTOR_KEY, next);
+  return next;
 }
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
@@ -68,17 +78,20 @@ export const regionalComparisonService = {
   async submitAnonymousContribution(userId: string, { city, category, totalExpense, periodMonth = currentPeriodMonth() }: RegionalContribution): Promise<void> {
     if (!userId || !city || city === 'Desconhecida' || !category || totalExpense <= 0) return;
 
+    const contributorId = await getAnonymousContributorId();
     const submissionKey = [
       'cofre_regional_submission',
-      userId,
+      contributorId,
       periodMonth,
       normalizeKeyPart(city),
       normalizeKeyPart(category),
     ].join(':');
+    const contributionKey = submissionKey.replace('cofre_regional_submission:', '');
+    const roundedTotal = totalExpense.toFixed(2);
 
     try {
-      const alreadySubmitted = await AsyncStorage.getItem(submissionKey);
-      if (alreadySubmitted) return;
+      const lastSubmittedTotal = await AsyncStorage.getItem(submissionKey);
+      if (lastSubmittedTotal === roundedTotal) return;
 
       const response = await fetchWithTimeout(`${API_URL}/regional-contribution`, {
         method: 'POST',
@@ -90,11 +103,12 @@ export const regionalComparisonService = {
           category,
           totalExpense,
           periodMonth,
+          contributionKey,
         }),
       });
 
       if (response.ok) {
-        await AsyncStorage.setItem(submissionKey, '1');
+        await AsyncStorage.setItem(submissionKey, roundedTotal);
       }
     } catch {
       // A comparacao continua funcionando localmente mesmo sem backend.
