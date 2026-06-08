@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Image, Modal, ScrollView, Share, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { exportService } from '@/services/exportService';
@@ -28,6 +28,30 @@ export default function SettingsScreen() {
   const [retireIncome, setRetireIncome] = useState('6500');
   const [irModal, setIrModal] = useState(false);
   const [irYear, setIrYear] = useState(new Date().getFullYear().toString());
+
+  const userTransactions = useMemo(() => {
+    if (!user?.uid) return [];
+    return transactions.filter((t: any) => {
+      const ownerId = t.userId ?? t.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [transactions, user?.uid]);
+
+  const userCards = useMemo(() => {
+    if (!user?.uid) return [];
+    return creditCards.filter((c: any) => {
+      const ownerId = c.userId ?? c.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [creditCards, user?.uid]);
+
+  const userGoals = useMemo(() => {
+    if (!user?.uid) return [];
+    return goals.filter((g: any) => {
+      const ownerId = g.userId ?? g.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [goals, user?.uid]);
 
   const toggle = (k: keyof typeof settings) => {
     Haptics.selectionAsync();
@@ -70,7 +94,7 @@ export default function SettingsScreen() {
   const handleExportIR = async () => {
     if (!user?.uid) return;
     const loans = await loanService.listLoans(user.uid);
-    await exportService.exportToIR({ user, transactions, loans, creditCards, goals }, Number(irYear));
+    await exportService.exportToIR({ user, transactions: userTransactions, loans, creditCards: userCards, goals: userGoals }, Number(irYear));
     setIrModal(false);
   };
 
@@ -135,13 +159,19 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        <Text style={s.sectionLabel}>Segurança</Text>
+        <View style={s.sectionHeader}>
+          <Ionicons name="lock-closed" size={16} color={theme.accent} />
+          <Text style={s.sectionLabel}>Segurança</Text>
+        </View>
         <View style={s.card}>
           <Row icon="shield-checkmark-outline" label="Autenticação em dois fatores (2FA)" onPress={() => router.push('/(app)/(tabs)/totp-setup' as never)} />
           <Row icon="key-outline" label="Senha mestra (backup criptografado)" onPress={() => setMasterModal(true)} isLast />
         </View>
 
-        <Text style={s.sectionLabel}>Dados & Sincronização</Text>
+        <View style={s.sectionHeader}>
+          <Ionicons name="cloud-done" size={16} color={theme.accent} />
+          <Text style={s.sectionLabel}>Dados & Sincronização</Text>
+        </View>
         <View style={s.card}>
           <Row icon="cloud-upload-outline"  label="Backup automático" sKey="autoBackup" />
           <Row icon="cloud-offline-outline" label="Modo offline" sKey="offlineSync" />
@@ -149,7 +179,10 @@ export default function SettingsScreen() {
         <Row icon="document-text-outline" label="Exportar dados para IR" onPress={() => setIrModal(true)} isLast />
         </View>
 
-        <Text style={s.sectionLabel}>Planejamento de aposentadoria</Text>
+        <View style={s.sectionHeader}>
+          <Ionicons name="trending-up" size={16} color={theme.accent} />
+          <Text style={s.sectionLabel}>Planejamento de aposentadoria</Text>
+        </View>
         <View style={s.card}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20, paddingVertical: 4 }}>
             <View style={{ flex: 1, minWidth: 120 }}>
@@ -240,14 +273,13 @@ const s = StyleSheet.create({
   signaturePreviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   signaturePreviewTitle: { fontSize: 13, fontWeight: '700', color: '#374151' },
   signaturePreview: { height: 72, width: '100%', backgroundColor: '#F9FAFB', borderRadius: 14 },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0, marginHorizontal: 24, marginBottom: 10 },
-  card: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2, marginBottom: 24, borderWidth: 1, borderColor: '#F3F4F6' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 24, marginBottom: 10, marginTop: 8 },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: '#4B5563', textTransform: 'uppercase', letterSpacing: 0.5 },
+  card: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 28, paddingHorizontal: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3, marginBottom: 24, borderWidth: 1, borderColor: '#F8FAFC' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
   rowIconBg: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  rowLabel: { fontSize: 14, fontWeight: '500', color: '#111827', flex: 1, minWidth: 0 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, fontSize: 15, color: '#111827', backgroundColor: '#F9FAFB' },
+  rowLabel: { fontSize: 15, fontWeight: '600', color: '#111827', flex: 1, minWidth: 0 },
   retireResult: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#F0FDF4', borderRadius: 16, padding: 16, marginBottom: 8 },
   retireIconBg: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center' },
   retireTxt: { fontSize: 13, color: '#374151', lineHeight: 19, minWidth: 0 },

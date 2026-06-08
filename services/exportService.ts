@@ -11,8 +11,14 @@ export const exportService = {
     const incomes   = yearTxs.filter((t: any) => t.type === 'income');
     
     const totalIncome = incomes.reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-    const totalExpenses = expenses.reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-    const finalBalance = totalIncome - totalExpenses;
+     
+    const accountExpenses = expenses.filter((t: any) => !t.paymentMethod || t.paymentMethod === 'balance');
+    const cardExpenses = expenses.filter((t: any) => t.paymentMethod === 'credit_card');
+    
+    const totalAccExpenses = accountExpenses.reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    const totalCardExpenses = cardExpenses.reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    const totalExpenses = totalAccExpenses + totalCardExpenses;
+    const finalBalance = totalIncome - totalAccExpenses;
 
     // Agrupar despesas por categoria
     const categoriesMap: Record<string, number> = {};
@@ -37,8 +43,10 @@ export const exportService = {
       `RESUMO ANUAL`,
       `--------------------------------------------------`,
       `Total de receitas: ${fmt(totalIncome)}`,
-      `Total de despesas: ${fmt(totalExpenses)}`,
-      `Saldo final do ano: ${fmt(finalBalance)}`,
+      `Despesas (Saldo da conta): ${fmt(totalAccExpenses)}`,
+      `Despesas (Cartão de crédito): ${fmt(totalCardExpenses)}`,
+      `Total geral de despesas: ${fmt(totalExpenses)}`,
+      `Saldo retido no ano: ${fmt(finalBalance)}`,
       ``,
       `--------------------------------------------------`,
       `DESPESAS POR CATEGORIA`,

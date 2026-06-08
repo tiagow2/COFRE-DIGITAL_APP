@@ -11,6 +11,7 @@ export interface RegionalComparisonResult {
   differencePercentage: number;
   status: ComparisonStatus;
   sampleSize: number;
+  source?: RegionalAverage['source'];
 }
 
 export function useRegionalComparison(userId: string | undefined, city: string, category: string, userAmount: number) {
@@ -41,7 +42,14 @@ export function useRegionalComparison(userId: string | undefined, city: string, 
         else if (differencePercentage < -10) status = 'below_average';
 
         setResult({
-          category, userAmount, regionalAverage: data.avgExpense, differenceAmount, differencePercentage, status, sampleSize: data.userCount
+          category,
+          userAmount,
+          regionalAverage: data.avgExpense,
+          differenceAmount,
+          differencePercentage,
+          status,
+          sampleSize: data.userCount,
+          source: data.source,
         });
       } catch (err) {
         setError('Não foi possível carregar as médias regionais.');
@@ -51,7 +59,7 @@ export function useRegionalComparison(userId: string | undefined, city: string, 
     };
 
     fetchComparison();
-  }, [city, category, userAmount]);
+  }, [city, category, userAmount, userId]);
 
   return { result, loading, error };
 }

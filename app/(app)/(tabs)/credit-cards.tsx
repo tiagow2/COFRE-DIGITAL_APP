@@ -1,3 +1,4 @@
+import { useAuth } from "@/context/AuthContext";
 import { CreditCard, useFinance } from "@/context/FinanceContext";
 import { getCardLimitInfo } from "@/utils/cardLimits";
 import { parseCurrencyInput } from "@/utils/currency";
@@ -5,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useFinancialTheme } from "@/hooks/useFinancialTheme";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -25,6 +26,7 @@ const CARD_COLORS = ["#1565C0", "#6C35DE", "#0F766E", "#111827", "#D97706", "#BE
 const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function CreditCardsScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const { creditCards, addCreditCard, loadingData } = useFinance();
   const theme = useFinancialTheme();
@@ -37,6 +39,14 @@ export default function CreditCardsScreen() {
     dueDate: "",
     color: CARD_COLORS[0],
   });
+
+  const userCards = useMemo(() => {
+    if (!user?.uid) return [];
+    return creditCards.filter((c: any) => {
+      const ownerId = c.userId ?? c.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [creditCards, user?.uid]);
 
   const handleAddCard = async () => {
     const limit = parseCurrencyInput(newCard.limit);
@@ -159,7 +169,7 @@ export default function CreditCardsScreen() {
         </TouchableOpacity>
       </View>
 
-      {creditCards.length === 0 ? (
+      {userCards.length === 0 ? (
         <View style={s.emptyContainer}>
           <View style={s.emptyIcon}>
             <Ionicons name="card-outline" size={34} color="#1565C0" />
@@ -175,7 +185,7 @@ export default function CreditCardsScreen() {
         </View>
       ) : (
         <FlatList
-          data={creditCards}
+          data={userCards}
           renderItem={({ item }) => <CardItem card={item} />}
           keyExtractor={(item) => item.id}
           contentContainerStyle={s.listContent}

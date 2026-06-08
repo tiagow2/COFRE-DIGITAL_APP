@@ -42,14 +42,16 @@ const HIGH_VALUE = 5000;
 const fmt = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const asNumber = (value: unknown) => {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const {
     transactions,
     challenges,
-    getBalance,
-    getMonthlyIncome,
-    getMonthlyExpenses,
     addTransaction,
     suggestCategory,
     loadingData,
@@ -75,15 +77,50 @@ export default function HomeScreen() {
   const [validatingSignature, setValidatingSignature] = useState(false);
 
   const firstName = user?.name?.split(' ')[0] ?? 'Usuário';
-  const balance = getBalance();
-  const monthlyIncome = getMonthlyIncome();
-  const monthlyExpenses = getMonthlyExpenses();
-  const recent = transactions.slice(0, 5);
-  const activeChallenges = challenges.filter((challenge: any) => challenge.status === 'active').slice(0, 2);
-  const selectedCard = creditCards.find((card) => card.id === selectedCardId);
+
+  const userTransactions = useMemo(() => {
+    if (!user?.uid) return [];
+    return transactions.filter((t: any) => t.userId === user.uid || t.user_id === user.uid);
+  }, [transactions, user?.uid]);
+
+  const userCards = useMemo(() => {
+    if (!user?.uid) return [];
+    return creditCards.filter((c: any) => c.userId === user.uid || c.user_id === user.uid);
+  }, [creditCards, user?.uid]);
+
+  const userChallenges = useMemo(() => {
+    if (!user?.uid) return [];
+    return challenges.filter((c: any) => c.userId === user.uid || c.user_id === user.uid);
+  }, [challenges, user?.uid]);
+
+  const recent = userTransactions.slice(0, 5);
+
+  const balance = useMemo(() => {
+    const inc = userTransactions.filter((t: any) => t.type === 'income').reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+    const exp = userTransactions.filter((t: any) => t.type === 'expense' && (!t.paymentMethod || t.paymentMethod === 'balance')).reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+    return inc - exp;
+  }, [userTransactions]);
+
+  const monthlyIncome = useMemo(() => {
+    const now = new Date();
+    return userTransactions.filter((t: any) => t.type === 'income' && new Date(t.date || t.createdAt).getMonth() === now.getMonth() && new Date(t.date || t.createdAt).getFullYear() === now.getFullYear()).reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+  }, [userTransactions]);
+
+  const monthlyAccountExpenses = useMemo(() => {
+    const now = new Date();
+    return userTransactions.filter((t: any) => t.type === 'expense' && (!t.paymentMethod || t.paymentMethod === 'balance') && new Date(t.date || t.createdAt).getMonth() === now.getMonth() && new Date(t.date || t.createdAt).getFullYear() === now.getFullYear()).reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+  }, [userTransactions]);
+
+  const monthlyCardExpenses = useMemo(() => {
+    const now = new Date();
+    return userTransactions.filter((t: any) => t.type === 'expense' && t.paymentMethod === 'credit_card' && new Date(t.date || t.createdAt).getMonth() === now.getMonth() && new Date(t.date || t.createdAt).getFullYear() === now.getFullYear()).reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+  }, [userTransactions]);
+
+  const activeChallenges = userChallenges.filter((challenge: any) => challenge.status === 'active').slice(0, 2);
+  const selectedCard = userCards.find((card: any) => card.id === selectedCardId);
   const cardNotifications = useMemo(
-    () => buildCardLimitNotifications(creditCards, user?.uid ?? 'local'),
-    [creditCards, user?.uid]
+    () => buildCardLimitNotifications(userCards, user?.uid ?? 'local'),
+    [userCards, user?.uid]
   );
 
   useEffect(() => {
@@ -302,9 +339,11 @@ export default function HomeScreen() {
           <Text style={s.balanceLabel}>Saldo disponível</Text>
           <Text style={s.balanceValue} adjustsFontSizeToFit numberOfLines={1}>{fmt(balance)}</Text>
           <View style={s.balanceRow}>
-            <BalanceItem icon="arrow-down-circle-outline" label="Receitas" value={fmt(monthlyIncome)} />
+            <BalanceItem icon="trending-up-outline" label="Receitas" value={fmt(monthlyIncome)} />
             <View style={s.balanceDivider} />
-            <BalanceItem icon="arrow-up-circle-outline" label="Despesas" value={fmt(monthlyExpenses)} />
+            <BalanceItem icon="wallet-outline" label="Conta" value={fmt(monthlyAccountExpenses)} />
+            <View style={s.balanceDivider} />
+            <BalanceItem icon="card-outline" label="Cartão" value={fmt(monthlyCardExpenses)} />
           </View>
         </LinearGradient>
 
@@ -327,13 +366,16 @@ export default function HomeScreen() {
         {cardNotifications.length > 0 && (
           <>
             <View style={s.sectionRow}>
-              <Text style={s.sectionTitle}>Alertas dos cartões</Text>
+              <View style={s.sectionHeaderLeft}>
+                <Ionicons name="card" size={18} color={theme.accent} />
+                <Text style={s.sectionTitle}>Alertas dos cartões</Text>
+              </View>
               <TouchableOpacity onPress={() => router.push('/(app)/(tabs)/credit-cards' as never)}>
-                <Text style={s.seeAll}>Ver cartões</Text>
+                <Text style={[s.seeAll, { color: theme.accent }]}>Gerenciar</Text>
               </TouchableOpacity>
             </View>
-            {cardNotifications.slice(0, 3).map((item) => {
-              const card = creditCards.find((cardItem) => cardItem.id === item.relatedCardId);
+            {cardNotifications.slice(0, 3).map((item: any) => {
+              const card = userCards.find((cardItem: any) => cardItem.id === item.relatedCardId);
               const status = card ? getCardLimitStatus(card.id) : undefined;
 
               return (
@@ -362,9 +404,12 @@ export default function HomeScreen() {
         {activeChallenges.length > 0 && (
           <>
             <View style={s.sectionRow}>
-              <Text style={s.sectionTitle}>Desafios ativos</Text>
+              <View style={s.sectionHeaderLeft}>
+                <Ionicons name="trophy" size={18} color={theme.accent} />
+                <Text style={s.sectionTitle}>Desafios ativos</Text>
+              </View>
               <TouchableOpacity onPress={() => router.push('/(app)/(tabs)/challenges' as never)}>
-                <Text style={s.seeAll}>Ver todos</Text>
+                <Text style={[s.seeAll, { color: theme.accent }]}>Ver todos</Text>
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.challengeList}>
@@ -386,9 +431,12 @@ export default function HomeScreen() {
         )}
 
         <View style={s.sectionRow}>
-          <Text style={s.sectionTitle}>Transações recentes</Text>
+          <View style={s.sectionHeaderLeft}>
+            <Ionicons name="receipt" size={18} color={theme.accent} />
+            <Text style={s.sectionTitle}>Transações recentes</Text>
+          </View>
           <TouchableOpacity onPress={() => router.push('/(app)/(tabs)/extrato' as never)}>
-            <Text style={s.seeAll}>Ver todas</Text>
+            <Text style={[s.seeAll, { color: theme.accent }]}>Ver todas</Text>
           </TouchableOpacity>
         </View>
 
@@ -498,7 +546,7 @@ export default function HomeScreen() {
                         </View>
                       </TouchableOpacity>
 
-                      {creditCards.map((card) => {
+                      {userCards.map((card: any) => {
                         const status = getCardLimitStatus(card.id);
                         const active = paymentMethod === 'credit_card' && selectedCardId === card.id;
                         return (
@@ -610,6 +658,7 @@ const s = StyleSheet.create({
   quickIcon: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 6, borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)' },
   quickLabel: { fontSize: 11, color: '#374151', fontWeight: '700', maxWidth: '100%' },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingHorizontal: 20, marginBottom: 16, marginTop: 8 },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#111827', flex: 1, minWidth: 0 },
   seeAll: { fontSize: 13, color: '#1565C0', fontWeight: '700', flexShrink: 0 },
   alertCard: { marginHorizontal: 20, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, flexDirection: 'row', gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },

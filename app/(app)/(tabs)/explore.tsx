@@ -37,7 +37,7 @@ const CAT_COLORS: Record<string, string> = {
 
 export default function DashboardScreen() {
   const { user } = useAuth();
-  const { creditCards, transactions, getBalance, getMonthlyIncome, getMonthlyExpenses } = useFinance();
+  const { creditCards, transactions } = useFinance();
   const router = useRouter();
   const theme = useFinancialTheme();
   const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'annual'>('overview');
@@ -54,65 +54,94 @@ export default function DashboardScreen() {
     }, [user?.uid])
   );
 
-  const balance = getBalance();
+  const userTransactions = useMemo(() => {
+    if (!user?.uid) return [];
+    return transactions.filter((t: any) => t.userId === user.uid || t.user_id === user.uid);
+  }, [transactions, user?.uid]);
+
+  const userCards = useMemo(() => {
+    if (!user?.uid) return [];
+    return creditCards.filter((c: any) => c.userId === user.uid || c.user_id === user.uid);
+  }, [creditCards, user?.uid]);
+
+  const balance = useMemo(() => {
+    const inc = userTransactions.filter((t: any) => t.type === 'income').reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+    const exp = userTransactions.filter((t: any) => t.type === 'expense' && (!t.paymentMethod || t.paymentMethod === 'balance')).reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+    return inc - exp;
+  }, [userTransactions]);
+
+  const monthlyIncome = useMemo(() => {
+    const now = new Date();
+    return userTransactions.filter((t: any) => t.type === 'income' && safeDate(t.date || t.createdAt).getMonth() === now.getMonth() && safeDate(t.date || t.createdAt).getFullYear() === now.getFullYear()).reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+  }, [userTransactions]);
+
+  const monthlyAccountExpenses = useMemo(() => {
+    const now = new Date();
+    return userTransactions.filter((t: any) => t.type === 'expense' && (!t.paymentMethod || t.paymentMethod === 'balance') && safeDate(t.date || t.createdAt).getMonth() === now.getMonth() && safeDate(t.date || t.createdAt).getFullYear() === now.getFullYear()).reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+  }, [userTransactions]);
+
+  const monthlyCardExpenses = useMemo(() => {
+    const now = new Date();
+    return userTransactions.filter((t: any) => t.type === 'expense' && t.paymentMethod === 'credit_card' && safeDate(t.date || t.createdAt).getMonth() === now.getMonth() && safeDate(t.date || t.createdAt).getFullYear() === now.getFullYear()).reduce((sum: number, t: any) => sum + asNumber(t.amount), 0);
+  }, [userTransactions]);
 
   const years = useMemo(() => {
     const found = new Set<number>([new Date().getFullYear()]);
-    transactions.forEach((tx) => found.add(safeDate(tx.date).getFullYear()));
+    userTransactions.forEach((tx: any) => found.add(safeDate(tx.date || tx.createdAt).getFullYear()));
     return Array.from(found).sort((a, b) => b - a);
-  }, [transactions]);
+  }, [userTransactions]);
 
   const flow = useMemo(() => {
     const now = new Date();
     return Array.from({ length: 6 }, (_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
-      const monthTransactions = transactions.filter((tx) => {
-        const txDate = safeDate(tx.date);
+      const monthTransactions = userTransactions.filter((tx: any) => {
+        const txDate = safeDate(tx.date || tx.createdAt);
         return txDate.getMonth() === date.getMonth() && txDate.getFullYear() === date.getFullYear();
       });
       const income = monthTransactions
-        .filter((tx) => tx.type === 'income')
-        .reduce((sum, tx) => sum + asNumber(tx.amount), 0);
+        .filter((tx: any) => tx.type === 'income')
+        .reduce((sum: number, tx: any) => sum + asNumber(tx.amount), 0);
       const expense = monthTransactions
-        .filter((tx) => tx.type === 'expense')
-        .reduce((sum, tx) => sum + asNumber(tx.amount), 0);
+        .filter((tx: any) => tx.type === 'expense' && (!tx.paymentMethod || tx.paymentMethod === 'balance'))
+        .reduce((sum: number, tx: any) => sum + asNumber(tx.amount), 0);
 
       return {
         label: date.toLocaleDateString('pt-BR', { month: 'short' }),
         value: income - expense,
       };
     });
-  }, [transactions]);
+  }, [userTransactions]);
 
   const projection = useMemo(() => {
-    const monthlyIncome = getMonthlyIncome();
-    const monthlyExpense = getMonthlyExpenses();
     let running = balance;
     const now = new Date();
 
     return Array.from({ length: 12 }, (_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth() + index + 1, 1);
-      running += monthlyIncome - monthlyExpense;
+      running += monthlyIncome - monthlyAccountExpenses; // Apenas saídas da conta reduzem a projeção
 
       return {
         label: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
         balance: running,
       };
     });
-  }, [balance, getMonthlyExpenses, getMonthlyIncome]);
+  }, [balance, monthlyIncome, monthlyAccountExpenses]);
 
   const annual = useMemo(() => {
     const months = Array.from({ length: 12 }, (_, month) => ({
       month,
       label: new Date(selectedYear, month, 1).toLocaleDateString('pt-BR', { month: 'short' }),
       income: 0,
+      accExpense: 0,
+      cardExpense: 0,
       expense: 0,
-      transactions: [] as typeof transactions,
+      transactions: [] as any[],
     }));
-    const categories = new Map<string, { category: string; total: number; count: number; transactions: typeof transactions; byMonth: number[] }>();
+    const categories = new Map<string, { category: string; total: number; count: number; transactions: any[]; byMonth: number[] }>();
     const cards = new Map<string, { name: string; total: number; count: number }>();
 
-    const yearTransactions = transactions.filter((tx) => safeDate(tx.date).getFullYear() === selectedYear);
+    const yearTransactions = userTransactions.filter((tx: any) => safeDate(tx.date || tx.createdAt).getFullYear() === selectedYear);
 
     yearTransactions.forEach((tx) => {
       const date = safeDate(tx.date);
@@ -125,7 +154,11 @@ export default function DashboardScreen() {
       }
 
       const amount = asNumber(tx.amount);
-      month.expense += amount;
+      month.expense += amount; // total geral para graficos
+      
+      if (!tx.paymentMethod || tx.paymentMethod === 'balance') month.accExpense += amount;
+      else if (tx.paymentMethod === 'credit_card') month.cardExpense += amount;
+
       const category = tx.category || 'Outros';
       const current = categories.get(category) ?? {
         category,
@@ -150,7 +183,8 @@ export default function DashboardScreen() {
     });
 
     const totalIncome = months.reduce((sum, month) => sum + month.income, 0);
-    const totalExpense = months.reduce((sum, month) => sum + month.expense, 0);
+    const totalAccExpense = months.reduce((sum, month) => sum + month.accExpense, 0);
+    const totalCardExpense = months.reduce((sum, month) => sum + month.cardExpense, 0);
     const categoriesList = Array.from(categories.values()).sort((a, b) => b.total - a.total);
     const biggestMonth = [...months].sort((a, b) => b.expense - a.expense)[0];
     const biggestCategory = categoriesList[0];
@@ -160,14 +194,14 @@ export default function DashboardScreen() {
       months,
       yearTransactions,
       totalIncome,
-      totalExpense,
-      finalBalance: totalIncome - totalExpense,
+      totalExpense: totalAccExpense + totalCardExpense,
+      finalBalance: totalIncome - totalAccExpense,
       categories: categoriesList,
       biggestMonth,
       biggestCategory,
       mostUsedCard,
     };
-  }, [selectedYear, transactions]);
+  }, [selectedYear, userTransactions]);
 
   const flowMax = Math.max(...flow.map((item) => Math.abs(item.value)), 1);
   const annualMax = Math.max(...annual.months.map((month) => Math.max(month.income, month.expense)), 1);
@@ -182,17 +216,24 @@ export default function DashboardScreen() {
           <Text style={s.heroBalance} adjustsFontSizeToFit numberOfLines={1}>{fmt(balance)}</Text>
           <View style={s.heroRow}>
             <View style={s.heroItemPill}>
-              <Ionicons name="arrow-down-circle" size={20} color="#fff" style={{ opacity: 0.9 }} />
+              <Ionicons size={16} color="#fff" style={{ opacity: 0.9 }} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={s.heroItemLabel}>Receitas</Text>
-                <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(getMonthlyIncome())}</Text>
+                <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(monthlyIncome)}</Text>
               </View>
             </View>
             <View style={s.heroItemPill}>
-              <Ionicons name="arrow-up-circle" size={20} color="#fff" style={{ opacity: 0.9 }} />
+              <Ionicons size={16} color="#fff" style={{ opacity: 0.9 }} />
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.heroItemLabel}>Despesas</Text>
-                <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(getMonthlyExpenses())}</Text>
+                <Text style={s.heroItemLabel}>Conta</Text>
+                <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(monthlyAccountExpenses)}</Text>
+              </View>
+            </View>
+            <View style={s.heroItemPill}>
+              <Ionicons size={16} color="#fff" style={{ opacity: 0.9 }} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.heroItemLabel}>Cartão</Text>
+                <Text style={s.heroItemTxt} numberOfLines={1} adjustsFontSizeToFit>{fmt(monthlyCardExpenses)}</Text>
               </View>
             </View>
           </View>
@@ -217,7 +258,7 @@ export default function DashboardScreen() {
 
         {activeTab === 'overview' && (
           <>
-            {creditCards.length > 0 && (
+            {userCards.length > 0 && (
               <>
                 <View style={s.sectionHeader}>
                   <View style={s.sectionHeaderLeft}>
@@ -225,7 +266,7 @@ export default function DashboardScreen() {
                     <Text style={s.secTitle}>Cartões de crédito</Text>
                   </View>
                 </View>
-                {creditCards.map((card) => {
+                {userCards.map((card: any) => {
                   const info = getCardLimitInfo(card);
                   return (
                     <TouchableOpacity key={card.id} style={s.cardRow} onPress={() => router.push('/(app)/(tabs)/credit-cards' as never)}>
@@ -519,9 +560,9 @@ const s = StyleSheet.create({
   heroLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '700', marginBottom: 4 },
   heroBalance: { color: '#fff', fontSize: 42, fontWeight: '800', letterSpacing: -1, marginBottom: 16 },
   heroRow: { flexDirection: 'row', gap: 12 },
-  heroItemPill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.15)', padding: 14, borderRadius: 20 },
-  heroItemLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600', marginBottom: 2 },
-  heroItemTxt: { color: '#fff', fontSize: 16, fontWeight: '800', minWidth: 0 },
+  heroItemPill: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.15)', padding: 10, borderRadius: 16 },
+  heroItemLabel: { fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: '600', marginBottom: 2 },
+  heroItemTxt: { color: '#fff', fontSize: 13, fontWeight: '800', minWidth: 0 },
   tabBar: { flexDirection: 'row', marginHorizontal: 20, backgroundColor: '#F1F5F9', borderRadius: 20, padding: 6, marginBottom: 20 },
   tab: { flex: 1, minWidth: 0, paddingVertical: 12, alignItems: 'center', borderRadius: 16 },
   tabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 },

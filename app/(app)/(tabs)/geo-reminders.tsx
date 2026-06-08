@@ -170,7 +170,7 @@ export default function GeoRemindersScreen() {
   const handleSavePlace = async (place: PlaceResult) => {
     if (!user?.uid) return;
     try {
-      await geoReminderService.saveMonitoredLocation(user.uid, place.placeId, place.name, place.lat, place.lng, category);
+      await geoReminderService.saveMonitoredLocation(user.uid, place.placeId, place.name, place.latitude, place.longitude, category);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await loadLocations();
       Alert.alert('Sucesso', `${place.name} foi salvo para monitorar contas de ${category}.`);
@@ -243,7 +243,10 @@ export default function GeoRemindersScreen() {
 
         {/* 2. Locais Monitorados Salvos */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>Meus Locais</Text>
+          <View style={s.cardHeader}>
+            <Ionicons name="map" size={20} color={theme.accent} />
+            <Text style={s.cardTitle}>Meus Locais</Text>
+          </View>
           {loadingLocations ? (
             <ActivityIndicator color={theme.accent} style={{ marginVertical: 20 }} />
           ) : locations.length === 0 ? (
@@ -274,7 +277,7 @@ export default function GeoRemindersScreen() {
         </View>
 
         <View style={s.infoCard}>
-          <Ionicons name="information-circle-outline" size={18} color={theme.accent} />
+          <Ionicons name="shield-checkmark" size={20} color={theme.accent} />
           <Text style={s.infoText}>
             <Text style={{fontWeight: '700'}}>Privacidade:</Text> Sua localização é usada apenas no seu celular.
           </Text>
@@ -313,12 +316,12 @@ export default function GeoRemindersScreen() {
             </ScrollView>
 
             <TouchableOpacity style={[s.primaryBtn, { backgroundColor: theme.accent }]} onPress={handleSearch} disabled={loadingPlaces}>
-              {loadingPlaces ? <ActivityIndicator color="#fff" /> : <Ionicons name="search-outline" size={18} color="#fff" />}
+              {loadingPlaces ? <ActivityIndicator color="#fff" /> : <Ionicons name="search" size={18} color="#fff" />}
               <Text style={s.primaryBtnText}>Buscar lugares próximos</Text>
             </TouchableOpacity>
 
             {places.length > 0 && (
-              <ScrollView style={{ marginTop: 16, maxHeight: 250 }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ marginTop: 24, maxHeight: 250 }} showsVerticalScrollIndicator={false}>
                 {places.map((place) => (
                   <TouchableOpacity key={place.placeId} style={s.placeRow} onPress={() => handleSavePlace(place)}>
                     <View style={{ flex: 1 }}><Text style={s.placeName}>{place.name}</Text><Text style={s.placeAddress}>{place.distanceMeters}m • {place.address}</Text></View>
@@ -348,25 +351,26 @@ const s = StyleSheet.create({
   alertHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   alertTitle: { fontSize: 16, fontWeight: '800', color: '#991B1B' },
   alertText: { fontSize: 14, color: '#991B1B', lineHeight: 20 },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: '#EEF2F7', marginBottom: 14 },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 6 },
+  card: { backgroundColor: '#fff', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: '#F8FAFC', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3, marginBottom: 20 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  cardTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
   muted: { fontSize: 12, color: '#6B7280', lineHeight: 18 },
-  label: { fontSize: 13, fontWeight: '700', color: '#374151', marginTop: 12, marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, fontSize: 15, color: '#111827', backgroundColor: '#F9FAFB' },
+  label: { fontSize: 14, fontWeight: '700', color: '#374151', marginTop: 12, marginBottom: 8 },
+  input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#111827', backgroundColor: '#F9FAFB', marginBottom: 16 },
   keywordList: { gap: 8, paddingRight: 20 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  chipText: { fontSize: 13, color: '#6B7280', fontWeight: '700' },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, borderRadius: 16, marginTop: 24 },
-  primaryBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#fff' },
+  chipText: { fontSize: 14, color: '#4B5563', fontWeight: '700' },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 56, borderRadius: 16, marginTop: 24 },
+  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   placeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  placeName: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  placeName: { fontSize: 16, fontWeight: '700', color: '#111827' },
   placeAddress: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   emptyBox: { alignItems: 'center', paddingVertical: 32 },
-  emptyText: { marginTop: 8, fontSize: 13, color: '#6B7280' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  deleteBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
-  infoCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#fff', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#EEF2F7' },
-  infoText: { flex: 1, minWidth: 0, color: '#6B7280', fontSize: 12, lineHeight: 18, marginTop: 1 },
+  emptyText: { marginTop: 12, fontSize: 14, color: '#6B7280' },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+  deleteBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
+  infoCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F0FDF4', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#BBF7D0', marginHorizontal: 20 },
+  infoText: { flex: 1, minWidth: 0, color: '#166534', fontSize: 13, lineHeight: 18 },
   fab: { position: 'absolute', right: 24, bottom: 90, width: 60, height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6 },
   overlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40, maxHeight: '90%' },

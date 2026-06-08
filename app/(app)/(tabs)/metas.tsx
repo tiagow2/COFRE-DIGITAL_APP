@@ -1,9 +1,10 @@
+import { useAuth } from '@/context/AuthContext';
 import { useFinance } from '@/context/FinanceContext';
 import { useFinancialTheme } from '@/hooks/useFinancialTheme';
 import { parseCurrencyInput } from '@/utils/currency';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,6 +23,7 @@ const GOAL_ICONS = [
 ];
 
 export default function GoalsScreen() {
+  const { user } = useAuth();
   const { goals, addGoal, depositToGoal, getBalance, creditCards, addTransaction } = useFinance();
   const theme = useFinancialTheme();
   const [modalGoal, setModalGoal] = useState(false);
@@ -34,6 +36,21 @@ export default function GoalsScreen() {
   const [depAmt, setDepAmt] = useState('');
   const [payMethod, setPayMethod] = useState<'balance' | 'credit_card'>('balance');
   const [selCard, setSelCard] = useState('');
+  const balance = getBalance();
+  const userCards = useMemo(() => {
+    if (!user?.uid) return [];
+    return creditCards.filter((c: any) => {
+      const ownerId = c.userId ?? c.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [creditCards, user?.uid]);
+  const userGoals = useMemo(() => {
+    if (!user?.uid) return [];
+    return goals.filter((g: any) => {
+      const ownerId = g.userId ?? g.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [goals, user?.uid]);
 
   const resetGoalForm = () => {
     setGName('');
@@ -94,12 +111,12 @@ export default function GoalsScreen() {
     // Validar Meio de Pagamento
     let cardInfo: any = null;
     if (payMethod === 'credit_card') {
-      cardInfo = creditCards.find(c => c.id === selCard);
+      cardInfo = userCards.find((c: any) => c.id === selCard);
       if (!cardInfo) return Alert.alert('Erro', 'Cartão não selecionado.');
       const available = (cardInfo.limit || 0) - (cardInfo.used || 0);
       if (amount > available) return Alert.alert('Limite Insuficiente', 'O cartão selecionado não tem limite para esta contribuição.');
     } else {
-      if (getBalance() < amount) {
+      if (balance < amount) {
         return Alert.alert('Saldo Insuficiente', 'Essa contribuição deixará seu saldo negativo. Deseja continuar?', [
           { text: 'Cancelar', style: 'cancel' },
           { text: 'Confirmar', style: 'destructive', onPress: () => finalizeDeposit(amount, cardInfo) }
@@ -170,7 +187,7 @@ export default function GoalsScreen() {
           </TouchableOpacity>
         </View>
 
-        {goals.length === 0 ? (
+        {userGoals.length === 0 ? (
           <View style={s.emptyState}>
             <View style={s.emptyIconBg}>
               <Ionicons name="flag-outline" size={34} color="#9CA3AF" />
@@ -182,7 +199,7 @@ export default function GoalsScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          goals.map((goal: any) => {
+          userGoals.map((goal: any) => {
             const target = Number(goal.target) || 1;
             const current = Number(goal.current) || 0;
             const pct = Math.min(Math.round((current / target) * 100), 100);
@@ -340,7 +357,7 @@ export default function GoalsScreen() {
                 <Ionicons name="wallet-outline" size={18} color={payMethod === 'balance' ? theme.accent : '#6B7280'} />
                 <Text style={[s.payOptionTxt, payMethod === 'balance' && { color: theme.accent }]}>Saldo Atual</Text>
               </TouchableOpacity>
-              {creditCards.map(c => (
+              {userCards.map((c: any) => (
                 <TouchableOpacity key={c.id} style={[s.payOptionBtn, payMethod === 'credit_card' && selCard === c.id && { borderColor: theme.accent, backgroundColor: theme.accentSoft }]} onPress={() => { setPayMethod('credit_card'); setSelCard(c.id); }}>
                   <Ionicons name="card-outline" size={18} color={payMethod === 'credit_card' && selCard === c.id ? theme.accent : '#6B7280'} />
                   <Text style={[s.payOptionTxt, payMethod === 'credit_card' && selCard === c.id && { color: theme.accent }]}>{c.name}</Text>

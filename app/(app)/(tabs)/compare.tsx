@@ -23,6 +23,7 @@ const MIN_USERS = 1;
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const safeDate = (value: unknown) => {
+  if (!value) return new Date();
   const date = new Date(typeof value === 'string' ? value : new Date().toISOString());
   return Number.isNaN(date.getTime()) ? new Date() : date;
 };
@@ -35,35 +36,49 @@ export default function CompareScreen() {
   const [city, setCity] = useState('');
   const [loadingCity, setLoadingCity] = useState(false);
 
-  const yourMonthlyExpense = useMemo(() => {
-    const now = new Date();
-    return transactions
-      .filter((tx) => {
-        const date = safeDate(tx.date);
-        return (
-          tx.type === 'expense' &&
-          (tx.category || '').trim() === selectedCategory &&
-          date.getMonth() === now.getMonth() &&
-          date.getFullYear() === now.getFullYear()
-        );
-      })
-      .reduce((total, tx) => total + tx.amount, 0);
-  }, [selectedCategory, transactions]);
+  const userTransactions = useMemo(() => {
+    if (!user?.uid) return [];
+    return transactions.filter((t: any) => {
+      const ownerId = t.userId ?? t.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [transactions, user?.uid]);
 
-  const categoryCount = useMemo(() => {
+  const { currentMonthAmount, pastAverageAmount, categoryCount } = useMemo(() => {
     const now = new Date();
-    return transactions.filter((tx) => {
-      const date = safeDate(tx.date);
-      return (
-        tx.type === 'expense' &&
-        (tx.category || '').trim() === selectedCategory &&
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear()
-      );
-    }).length;
-  }, [selectedCategory, transactions]);
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-  const { result, loading: loadingAverage, error } = useRegionalComparison(user?.uid, city, selectedCategory, yourMonthlyExpense);
+    let current = 0;
+    let pastTotal = 0;
+    let pastMonthsSet = new Set<string>();
+    let count = 0;
+
+    userTransactions.forEach((tx: any) => {
+      if ((tx.type === 'expense' || tx.type === 'Despesa') && (tx.category || '').trim() === selectedCategory) {
+        const date = safeDate(tx.date || tx.createdAt);
+        const txMonth = date.getMonth();
+        const txYear = date.getFullYear();
+        const amt = Number(tx.amount || 0);
+
+        count++;
+
+        if (txMonth === currentMonth && txYear === currentYear) {
+          current += amt;
+        } else if (date < now) {
+          pastTotal += amt;
+          pastMonthsSet.add(`${txYear}-${txMonth}`);
+        }
+      }
+    });
+
+    const pastMonthsCount = Math.max(pastMonthsSet.size, 1);
+    const pastAverage = pastMonthsSet.size > 0 ? pastTotal / pastMonthsCount : 0;
+
+    return { currentMonthAmount: current, pastAverageAmount: pastAverage, categoryCount: count };
+  }, [selectedCategory, userTransactions]);
+
+  const { result, loading: loadingAverage, error } = useRegionalComparison(user?.uid, city, selectedCategory, currentMonthAmount);
 
   const handleUseLocation = async () => {
     setLoadingCity(true);
@@ -82,15 +97,38 @@ export default function CompareScreen() {
     }
   };
 
-  // Cálculos para o gráfico de barras
-  const currentUserAmount = result?.userAmount ?? yourMonthlyExpense;
-  const currentRegionAmount = result?.regionalAverage ?? 0;
-  const maxBarValue = Math.max(currentUserAmount, currentRegionAmount, 1);
-  const userBarWidth = `${Math.max((currentUserAmount / maxBarValue) * 100, 5)}%`;
-  const regionBarWidth = `${Math.max((currentRegionAmount / maxBarValue) * 100, 5)}%`;
-
-  const hasEnoughData = result && result.sampleSize >= MIN_USERS && result.regionalAverage > 0;
+  const hasFixedSjcData = result?.source === 'fixed_sjc' && result.regionalAverage > 0;
+  const hasRegionalData = result && (hasFixedSjcData || result.sampleSize >= MIN_USERS) && result.regionalAverage > 0;
+  const hasPastData = pastAverageAmount > 0;
   const hasUserData = categoryCount > 0;
+  const estimatedRegionalAverage = hasPastData ? pastAverageAmount : currentMonthAmount;
+  const hasEstimatedRegionalData = !hasRegionalData && hasUserData && estimatedRegionalAverage > 0;
+  const showComparison = hasRegionalData || hasEstimatedRegionalData;
+
+  const comparisonTarget = hasRegionalData ? result!.regionalAverage : estimatedRegionalAverage;
+  const targetLabel = 'Região';
+  const targetSub = hasFixedSjcData ? 'Referência SJC' : hasRegionalData ? 'Média regional' : hasPastData ? 'Estimativa pelo histórico' : 'Primeira amostra local';
+  const regionalSamplesLabel = hasRegionalData
+    ? hasFixedSjcData
+      ? 'referência SJC'
+      : `${result?.sampleSize} ${result?.sampleSize === 1 ? 'amostra' : 'amostras'}`
+    : hasEstimatedRegionalData
+      ? 'estimativa'
+      : '';
+
+  const diffAmt = currentMonthAmount - comparisonTarget;
+  const diffPct = comparisonTarget > 0 ? (diffAmt / comparisonTarget) * 100 : 0;
+  let fallbackStatus: 'above_average' | 'below_average' | 'within_average' = 'within_average';
+  if (diffPct > 10) fallbackStatus = 'above_average';
+  else if (diffPct < -10) fallbackStatus = 'below_average';
+
+  const finalStatus = hasRegionalData ? result?.status : fallbackStatus;
+  const finalDiffAmt = hasRegionalData ? result?.differenceAmount : diffAmt;
+  const finalDiffPct = hasRegionalData ? result?.differencePercentage : diffPct;
+
+  const maxBarValue = Math.max(currentMonthAmount, comparisonTarget, 1);
+  const userBarWidth = `${Math.max((currentMonthAmount / maxBarValue) * 100, 5)}%`;
+  const targetBarWidth = `${Math.max((comparisonTarget / maxBarValue) * 100, 5)}%`;
 
   return (
     <SafeAreaView style={s.safe}>
@@ -147,22 +185,22 @@ export default function CompareScreen() {
           <View style={s.cardBlock}>
             <ActivityIndicator color={theme.accent} style={{ marginVertical: 40 }} />
           </View>
-        ) : (!hasEnoughData && !hasUserData) ? (
+        ) : (!showComparison && !hasUserData) ? (
           <View style={s.cardBlock}>
             <View style={s.emptyBox}>
               <Ionicons name="people-outline" size={24} color="#9CA3AF" />
               <Text style={s.emptyTitle}>Dados insuficientes</Text>
-              <Text style={s.emptyText}>Ainda não há dados suficientes para comparar sua região.</Text>
+              <Text style={s.emptyText}>Sem histórico ou dados regionais para esta categoria.</Text>
             </View>
           </View>
-        ) : (hasEnoughData || hasUserData) ? (
+        ) : (showComparison || hasUserData) ? (
           <View style={s.mainCard}>
             <View style={s.cardHeader}>
               <Text style={s.cardCategory}>{selectedCategory}</Text>
-              {hasEnoughData && (
+              {(hasRegionalData || hasEstimatedRegionalData) && (
                 <View style={s.badge}>
                 <Ionicons name="people" size={12} color="#6B7280" />
-                  <Text style={s.badgeTxt}>{result?.sampleSize} {result?.sampleSize === 1 ? 'amostra' : 'amostras'}</Text>
+                  <Text style={s.badgeTxt}>{regionalSamplesLabel}</Text>
                 </View>
               )}
             </View>
@@ -170,52 +208,54 @@ export default function CompareScreen() {
             <View style={s.barsContainer}>
               <View style={s.barRow}>
                 <View style={s.barLabelContainer}>
-                  <Text style={s.barLabel}>Você</Text>
-                  <Text style={s.barSub}>{categoryCount} {categoryCount === 1 ? 'transação' : 'transações'}</Text>
+                  <Text style={s.barLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Você</Text>
+                  <Text style={s.barSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                    {categoryCount} {categoryCount === 1 ? 'transação' : 'transações'}
+                  </Text>
                 </View>
                 <View style={s.barTrack}>
-                  <View style={[s.barFill, { width: userBarWidth as any, backgroundColor: result?.status === 'above_average' ? '#EF4444' : theme.accent }]} />
+                  <View style={[s.barFill, { width: userBarWidth as any, backgroundColor: finalStatus === 'above_average' ? '#EF4444' : theme.accent }]} />
                 </View>
-                <Text style={s.barValue}>{fmt(currentUserAmount)}</Text>
+                <Text style={s.barValue} numberOfLines={1} adjustsFontSizeToFit>{fmt(currentMonthAmount)}</Text>
               </View>
 
-              {hasEnoughData ? (
+              {showComparison ? (
               <View style={s.barRow}>
                 <View style={s.barLabelContainer}>
-                  <Text style={s.barLabel}>Região</Text>
-                  <Text style={s.barSub}>Média</Text>
+                  <Text style={s.barLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{targetLabel}</Text>
+                  <Text style={s.barSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{targetSub}</Text>
                 </View>
                 <View style={s.barTrack}>
-                  <View style={[s.barFill, { width: regionBarWidth as any, backgroundColor: '#E5E7EB' }]} />
+                  <View style={[s.barFill, { width: targetBarWidth as any, backgroundColor: '#E5E7EB' }]} />
                 </View>
-                <Text style={s.barValue}>{fmt(result?.regionalAverage ?? 0)}</Text>
+                <Text style={s.barValue} numberOfLines={1} adjustsFontSizeToFit>{fmt(comparisonTarget)}</Text>
               </View>
               ) : (
                 <View style={[s.barRow, { paddingVertical: 10, justifyContent: 'center' }]}>
-                  <Text style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>Ainda não há dados suficientes de outros usuários para comparar esta categoria na sua região.</Text>
+                  <Text style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic', textAlign: 'center' }}>Seu histórico foi encontrado. A média regional aparece assim que a contribuição anônima desta categoria for registrada.</Text>
                 </View>
               )}
             </View>
 
-            {hasEnoughData && (
+            {showComparison && (
               <>
             <View style={s.divider} />
 
             <View style={s.resultFooter}>
-              <View style={[s.iconWrap, { backgroundColor: result?.status === 'above_average' ? '#FEE2E2' : result?.status === 'below_average' ? '#D1FAE5' : '#F3F4F6' }]}>
+              <View style={[s.iconWrap, { backgroundColor: finalStatus === 'above_average' ? '#FEE2E2' : finalStatus === 'below_average' ? '#D1FAE5' : '#F3F4F6' }]}>
                 <Ionicons 
-                  name={result?.status === 'above_average' ? 'warning' : result?.status === 'below_average' ? 'trending-down' : 'checkmark-circle'} 
+                  name={finalStatus === 'above_average' ? 'warning' : finalStatus === 'below_average' ? 'trending-down' : 'checkmark-circle'} 
                   size={22} 
-                  color={result?.status === 'above_average' ? '#EF4444' : result?.status === 'below_average' ? '#10B981' : '#4B5563'} 
+                  color={finalStatus === 'above_average' ? '#EF4444' : finalStatus === 'below_average' ? '#10B981' : '#4B5563'} 
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[s.resultTitle, { color: result?.status === 'above_average' ? '#991B1B' : result?.status === 'below_average' ? '#065F46' : '#374151' }]}>
-                  {result?.status === 'above_average' ? `${Math.abs(result.differencePercentage).toFixed(1)}% acima da média` :
-                   result?.status === 'below_average' ? `${Math.abs(result.differencePercentage).toFixed(1)}% abaixo da média` :
-                   'Dentro da média regional'}
+                <Text style={[s.resultTitle, { color: finalStatus === 'above_average' ? '#991B1B' : finalStatus === 'below_average' ? '#065F46' : '#374151' }]}>
+                  {finalStatus === 'above_average' ? `${Math.abs(finalDiffPct || 0).toFixed(1)}% acima da média` :
+                   finalStatus === 'below_average' ? `${Math.abs(finalDiffPct || 0).toFixed(1)}% abaixo da média` :
+                   'Dentro da média esperada'}
                 </Text>
-                <Text style={s.resultDesc}>A diferença é de {fmt(Math.abs(result?.differenceAmount ?? 0))}</Text>
+                <Text style={s.resultDesc}>A diferença é de {fmt(Math.abs(finalDiffAmt || 0))}</Text>
               </View>
             </View>
               </>
@@ -250,19 +290,19 @@ const s = StyleSheet.create({
   catTxt: { fontSize: 13, fontWeight: '600', color: '#6B7280' },
   content: { paddingBottom: 120 },
   cardBlock: { paddingHorizontal: 20 },
-  mainCard: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#EEF2F7', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  mainCard: { marginHorizontal: 20, backgroundColor: '#fff', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: '#EEF2F7', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 24 },
   cardCategory: { fontSize: 16, fontWeight: '800', color: '#111827' },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
   badgeTxt: { fontSize: 11, color: '#4B5563', fontWeight: '700' },
   barsContainer: { gap: 20 },
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  barLabelContainer: { width: 64 },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  barLabelContainer: { width: 92, flexShrink: 0 },
   barLabel: { fontSize: 13, color: '#111827', fontWeight: '700' },
   barSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
-  barTrack: { flex: 1, height: 12, backgroundColor: '#F3F4F6', borderRadius: 6, overflow: 'hidden' },
+  barTrack: { flex: 1, minWidth: 48, height: 12, backgroundColor: '#F3F4F6', borderRadius: 6, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 6 },
-  barValue: { width: 74, fontSize: 13, fontWeight: '800', color: '#111827', textAlign: 'right' },
+  barValue: { width: 92, flexShrink: 0, fontSize: 12, fontWeight: '800', color: '#111827', textAlign: 'right' },
   divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 20 },
   resultFooter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconWrap: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

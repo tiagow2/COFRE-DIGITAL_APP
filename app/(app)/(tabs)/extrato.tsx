@@ -1,3 +1,4 @@
+import { useAuth } from '@/context/AuthContext';
 import { useFinance } from '@/context/FinanceContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -71,17 +72,23 @@ const normalizeTx = (tx: any, index: number) => {
 
 export default function ExtratoScreen() {
   const { transactions, deleteTransaction } = useFinance();
+  const { user } = useAuth();
   const router = useRouter();
   const theme = useFinancialTheme();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('Todos');
   const [selectedTx, setSelectedTx] = useState<any>(null);
 
+  const userTransactions = useMemo(() => {
+    if (!user?.uid) return [];
+    return transactions.filter((t: any) => t.userId === user.uid || t.user_id === user.uid);
+  }, [transactions, user?.uid]);
+
   const safeTransactions = useMemo(() => {
     return Array.isArray(transactions)
-      ? transactions.map((tx, index) => normalizeTx(tx, index)).filter(Boolean)
+      ? userTransactions.map((tx: any, index: number) => normalizeTx(tx, index)).filter(Boolean)
       : [];
-  }, [transactions]);
+  }, [userTransactions]);
 
   const filtered = useMemo(() => {
     let list = safeTransactions as any[];
@@ -105,14 +112,20 @@ export default function ExtratoScreen() {
     return list.sort((a, b) => asDate(b.date).getTime() - asDate(a.date).getTime());
   }, [safeTransactions, filter, search]);
 
-  // Total de receitas fica fixo no global independente do filtro, como solicitado
-  const totalInc = safeTransactions
+  const totalInc = filtered
     .filter((t) => t?.type === 'income')
     .reduce((sum, tx) => sum + asNumber(tx.amount), 0);
 
-  const totalExp = filtered
-    .filter((t) => t?.type === 'expense')
+  const totalAccExp = filtered
+    .filter((t) => t?.type === 'expense' && (!t.paymentMethod || t.paymentMethod === 'balance'))
     .reduce((sum, tx) => sum + asNumber(tx.amount), 0);
+
+  const totalCardExp = filtered
+    .filter((t) => t?.type === 'expense' && t.paymentMethod === 'credit_card')
+    .reduce((sum, tx) => sum + asNumber(tx.amount), 0);
+
+  // Saldo dinâmico: Subtrai apenas o que de fato saiu da conta
+  const currentBalance = totalInc - totalAccExp;
 
   const catInfo = (tx: any) => {
     if (!tx) return CAT.Outros;
@@ -160,8 +173,9 @@ export default function ExtratoScreen() {
       <View style={s.summary}>
         {[
           { label: 'Receitas', value: totalInc, color: '#059669', bg: '#D1FAE5' },
-          { label: 'Despesas', value: totalExp, color: '#EF4444', bg: '#FEE2E2' },
-          { label: 'Saldo', value: totalInc - totalExp, color: totalInc - totalExp >= 0 ? '#059669' : '#EF4444', bg: totalInc - totalExp >= 0 ? '#D1FAE5' : '#FEE2E2' },
+          { label: 'Na Conta', value: totalAccExp, color: '#EF4444', bg: '#FEE2E2' },
+          { label: 'No Cartão', value: totalCardExp, color: '#D97706', bg: '#FEF3C7' },
+          { label: 'Saldo', value: currentBalance, color: currentBalance >= 0 ? '#059669' : '#EF4444', bg: currentBalance >= 0 ? '#D1FAE5' : '#FEE2E2' },
         ].map((item, index, arr) => (
           <React.Fragment key={item.label}>
             <View style={[s.summaryItem, { backgroundColor: item.bg }]}>
@@ -252,7 +266,7 @@ export default function ExtratoScreen() {
                         </Text>
                         <Text style={s.txCat} numberOfLines={1}>
                           {tx.creditCardName
-                            ? `${asText(tx.category, 'Outros')} - ${asText(tx.creditCardName, 'Cartão')}`
+                            ? `${asText(tx.category, 'Outros')} • 💳 ${asText(tx.creditCardName, 'Cartão')}`
                             : asText(tx.category, tx.type === 'income' ? 'Receita' : 'Outros')}
                         </Text>
                       </View>
@@ -345,8 +359,8 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
   title: { fontSize: 24, fontWeight: '800', color: '#111827', flex: 1, minWidth: 0 },
   iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
-  summary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginHorizontal: 20, marginBottom: 20 },
-  summaryItem: { flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
+  summary: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, marginHorizontal: 20, marginBottom: 20 },
+  summaryItem: { flexBasis: '48%', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
   summaryLabel: { fontSize: 12, color: '#4B5563', fontWeight: '600', marginBottom: 4 },
   summaryValue: { fontSize: 15, fontWeight: '800', minWidth: 0 },
   searchRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: '#F8FAFC', borderRadius: 16, marginBottom: 16, height: 56, paddingHorizontal: 8, borderWidth: 1, borderColor: '#F1F5F9' },

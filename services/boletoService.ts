@@ -7,7 +7,7 @@ export interface ParsedBoleto {
   dueDate: string | null;
   bankCode: string | null;
   bankName: string;
-  type: 'bank' | 'utility';
+  type: 'bank' | 'utility' | 'pix';
   warnings: string[];
 }
 

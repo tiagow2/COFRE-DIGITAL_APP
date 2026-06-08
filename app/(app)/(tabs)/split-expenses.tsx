@@ -126,7 +126,7 @@ export default function SplitExpensesScreen() {
             <View style={s.handle} />
             <Text style={s.sheetTitle}>Novo grupo</Text>
             <Text style={s.fieldLabel}>Nome do grupo</Text>
-            <TextInput style={s.input} placeholder="Ex: República, Viagem, Casamento..." placeholderTextColor="#9CA3AF" value={gName} onChangeText={setGName} />
+            <TextInput style={s.input} placeholder="Ex: Casa, Viagem..." placeholderTextColor="#9CA3AF" value={gName} onChangeText={setGName} />
             <Text style={s.fieldLabel}>Membros (separados por vírgula)</Text>
             <TextInput style={[s.input, { marginBottom: 24 }]} placeholder="Ana, Carlos, Maria..." placeholderTextColor="#9CA3AF" value={members} onChangeText={setMembers} />
             <TouchableOpacity style={[s.saveBtn, { backgroundColor: theme.accent }]} onPress={handleCreateGroup}>

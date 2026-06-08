@@ -4,6 +4,7 @@ import { API_URL } from './apiConfig';
 export interface RegionalAverage {
   avgExpense: number;
   userCount: number;
+  source?: 'backend' | 'fixed_sjc';
 }
 
 interface RegionalContribution {
@@ -15,6 +16,16 @@ interface RegionalContribution {
 
 const REQUEST_TIMEOUT_MS = 7000;
 const ANONYMOUS_CONTRIBUTOR_KEY = 'cofre_regional_anonymous_contributor_id';
+const SJC_FIXED_USER_COUNT = 0;
+const SJC_FIXED_REGIONAL_AVERAGES: Record<string, number> = {
+  alimentacao: 790,
+  transporte: 380,
+  lazer: 260,
+  saude: 360,
+  moradia: 1978,
+  educacao: 690,
+  outros: 310,
+};
 
 function asNumber(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -34,6 +45,20 @@ function normalizeKeyPart(value: string) {
     .replace(/^-|-$/g, '');
 }
 
+function isSaoJoseDosCampos(city: string) {
+  const normalized = normalizeKeyPart(city);
+  return normalized === 'sjc' || normalized.includes('sao-jose-dos-campos');
+}
+
+function getFixedSjcAverage(city: string, category: string): RegionalAverage | null {
+  if (!isSaoJoseDosCampos(city)) return null;
+
+  const avgExpense = SJC_FIXED_REGIONAL_AVERAGES[normalizeKeyPart(category)];
+  if (!avgExpense) return null;
+
+  return { avgExpense, userCount: SJC_FIXED_USER_COUNT, source: 'fixed_sjc' };
+}
+
 async function getAnonymousContributorId() {
   const existing = await AsyncStorage.getItem(ANONYMOUS_CONTRIBUTOR_KEY);
   if (existing) return existing;
@@ -51,27 +76,6 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
       setTimeout(() => reject(new Error('A conexao com o backend demorou demais.')), REQUEST_TIMEOUT_MS);
     }),
   ]);
-}
-
-// MOCK TEMPORÁRIO: Retorna dados coerentes para testar a tela enquanto o backend não está 100%
-// Desativado por padrão (USE_MOCKS = false) conforme regras de negócio.
-function getMockFallback(category: string): RegionalAverage {
-  const bases: Record<string, number> = {
-    'Alimentação': 850,
-    'Transporte': 350,
-    'Lazer': 400,
-    'Saúde': 250,
-    'Moradia': 1500,
-    'Educação': 600,
-    'Outros': 200,
-  };
-  
-  const base = bases[category] || 500;
-  // Gera uma variação aleatória de até 15% para parecer real
-  const variation = base * (0.85 + Math.random() * 0.3);
-  const users = Math.floor(Math.random() * 500) + 120;
-
-  return { avgExpense: Number(variation.toFixed(2)), userCount: users };
 }
 
 export const regionalComparisonService = {
@@ -120,6 +124,9 @@ export const regionalComparisonService = {
       return { avgExpense: 0, userCount: 0 };
     }
 
+    const fixedSjcAverage = getFixedSjcAverage(city, category);
+    if (fixedSjcAverage) return fixedSjcAverage;
+
     try {
       const response = await fetchWithTimeout(
         `${API_URL}/regional-averages?city=${encodeURIComponent(city)}&category=${encodeURIComponent(category)}&periodMonth=${currentPeriodMonth()}`
@@ -133,12 +140,11 @@ export const regionalComparisonService = {
       return {
         avgExpense: asNumber(data.avgExpense ?? data.avg_expense),
         userCount: asNumber(data.userCount ?? data.user_count),
+        source: 'backend',
       };
     } catch {
       // Caso o backend falhe ou não exista, retornamos zeros (0 usuários)
       // Isso ativará a tela de "Dados insuficientes" no app, garantindo que não exibiremos médias irreais.
-      const USE_MOCKS = false; // Desativado conforme regra estrita: não usar dados falsos como se fossem reais.
-      if (USE_MOCKS) return getMockFallback(category);
       return { avgExpense: 0, userCount: 0 };
     }
   },

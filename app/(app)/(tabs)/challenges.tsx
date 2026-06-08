@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +11,7 @@ import { parseCurrencyInput } from '@/utils/currency';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ChallengesScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const theme = useFinancialTheme();
   const { challenges, addChallenge, updateChallengeProgress, getBalance } = useFinance();
@@ -21,6 +23,14 @@ export default function ChallengesScreen() {
   const [contribModalVisible, setContribModalVisible] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
   const [contribAmount, setContribAmount] = useState('');
+
+  const userChallenges = useMemo(() => {
+    if (!user?.uid) return [];
+    return challenges.filter((c: any) => {
+      const ownerId = c.userId ?? c.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [challenges, user?.uid]);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return Alert.alert('Erro', 'Insira o título do desafio.');
@@ -94,12 +104,12 @@ export default function ChallengesScreen() {
           <Text style={s.sectionTitle}>Ativos</Text>
         </View>
 
-        {challenges.filter(c => c.status === 'active').length === 0 && (
+        {userChallenges.filter((c: any) => c.status === 'active').length === 0 && (
           <Text style={s.empty}>Nenhum desafio ativo. Crie um novo!</Text>
         )}
 
-        {challenges.filter(c => c.status === 'active').map(c => {
-          const pct = Math.min((c.currentAmount / c.targetAmount) * 100, 100);
+        {userChallenges.filter((c: any) => c.status === 'active').map((c: any) => {
+          const pct = Math.min((Number(c.currentAmount) / Number(c.targetAmount)) * 100, 100);
           return (
             <View key={c.id} style={s.card}>
               <View style={s.cardHeader}>
@@ -127,12 +137,12 @@ export default function ChallengesScreen() {
           <Text style={s.sectionTitle}>Completados 🏅</Text>
         </View>
 
-        {challenges.filter(c => c.status === 'completed').length === 0 && (
+        {userChallenges.filter((c: any) => c.status === 'completed').length === 0 && (
           <Text style={s.empty}>Você ainda não completou nenhum desafio.</Text>
         )}
 
-        {challenges.filter(c => c.status === 'completed').map(c => (
-          <LinearGradient key={c.id} colors={['#FDE68A', '#F59E0B']} start={{x:0, y:0}} end={{x:1, y:1}} style={s.medalCard}>
+        {userChallenges.filter((c: any) => c.status === 'completed').map((c: any) => (
+          <LinearGradient key={c.id} colors={['#FDE68A', '#F59E0B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.medalCard}>
             <View style={s.medalIconWrap}>
               <Text style={{ fontSize: 36 }}>🏅</Text>
             </View>

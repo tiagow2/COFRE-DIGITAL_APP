@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,29 @@ export default function LoansScreen() {
   const router = useRouter();
   const theme = useFinancialTheme();
   const { user } = useAuth();
-  const { getBalance, addTransaction, creditCards } = useFinance();
+  const { transactions, addTransaction, creditCards } = useFinance();
+
+  const userTransactions = useMemo(() => {
+    if (!user?.uid) return [];
+    return transactions.filter((t: any) => {
+      const ownerId = t.userId ?? t.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [transactions, user?.uid]);
+
+  const userCards = useMemo(() => {
+    if (!user?.uid) return [];
+    return creditCards.filter((c: any) => {
+      const ownerId = c.userId ?? c.user_id;
+      return !ownerId || ownerId === user.uid;
+    });
+  }, [creditCards, user?.uid]);
+
+  const balance = useMemo(() => {
+    const inc = userTransactions.filter((t: any) => t.type === 'income').reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+    const exp = userTransactions.filter((t: any) => t.type === 'expense' && (!t.paymentMethod || t.paymentMethod === 'balance')).reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+    return inc - exp;
+  }, [userTransactions]);
   
   const [localLoans, setLocalLoans] = useState<Loan[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -103,7 +125,7 @@ export default function LoansScreen() {
       }
     }
     // Validação de Saldo
-    else if (method === 'balance' && getBalance() < loan.installmentValue) {
+    else if (method === 'balance' && balance < loan.installmentValue) {
       return Alert.alert('Saldo Insuficiente', 'O valor da parcela é maior que seu saldo atual. Deseja usar o saldo mesmo assim e ficar negativo?', [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Confirmar e Negativar', style: 'destructive', onPress: () => executePayment(loan, method, card) }
@@ -114,6 +136,8 @@ export default function LoansScreen() {
   };
 
   const executePayment = async (loan: Loan, method: 'balance' | 'credit_card', card?: any) => {
+    if (!user?.uid) return;
+
     try {
       await addTransaction({
         type: 'expense',
@@ -214,10 +238,10 @@ export default function LoansScreen() {
             <ScrollView style={{ maxHeight: 300, marginBottom: 16 }}>
               <TouchableOpacity style={s.payOptionBtn} onPress={() => processPayment(paymentModal!, 'balance')}>
                 <Ionicons name="wallet-outline" size={20} color="#111827" />
-                <View style={{ flex: 1 }}><Text style={s.payOptionTxt}>Saldo Atual</Text><Text style={s.payOptionSub}>Disponível: {fmt(getBalance())}</Text></View>
+                <View style={{ flex: 1 }}><Text style={s.payOptionTxt}>Saldo Atual</Text><Text style={s.payOptionSub}>Disponível: {fmt(balance)}</Text></View>
               </TouchableOpacity>
               
-              {creditCards.map(c => (
+              {userCards.map((c: any) => (
                 <TouchableOpacity key={c.id} style={[s.payOptionBtn, { borderColor: c.color || theme.accent }]} onPress={() => processPayment(paymentModal!, 'credit_card', c)}>
                   <Ionicons name="card-outline" size={20} color={c.color || theme.accent} />
                   <View style={{ flex: 1 }}><Text style={s.payOptionTxt}>Cartão {c.name}</Text><Text style={s.payOptionSub}>Limite: {fmt(Math.max((c.limit || 0) - (c.used || 0), 0))}</Text></View>
@@ -253,6 +277,7 @@ const s = StyleSheet.create({
   fab: { position: 'absolute', right: 24, bottom: 90, width: 60, height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   overlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 },
+  handle: { width: 40, height: 5, backgroundColor: '#E5E7EB', borderRadius: 3, alignSelf: 'center', marginBottom: 20 },
   sheetTitle: { fontSize: 22, fontWeight: '800', marginBottom: 24, color: '#111827', textAlign: 'center' },
   sheetDesc: { fontSize: 14, color: '#4B5563', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   input: { borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#F9FAFB', borderRadius: 16, padding: 16, fontSize: 16, marginBottom: 16, color: '#111827', fontWeight: '500' },

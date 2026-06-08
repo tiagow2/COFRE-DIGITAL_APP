@@ -1,3 +1,4 @@
+import { useAuth } from '@/context/AuthContext';
 import { CreditCard, useFinance } from '@/context/FinanceContext';
 import { formatBoletoDueDate, ParsedBoleto, parseBoletoCode } from '@/services/boletoService';
 import { useFinancialTheme } from '@/hooks/useFinancialTheme';
@@ -43,9 +44,10 @@ function parsePix(payload: string): ParsedBoleto | null {
     i += 4 + len;
   }
   return {
-    original: payload, barcode: payload,
+    original: payload, digits: payload, barcode: payload,
     amount: pixAmount, amountText: fmt(pixAmount),
     dueDate: null,
+    bankCode: null,
     bankName: pixName,
     type: 'pix' as any,
     warnings: [],
@@ -77,6 +79,7 @@ function isBoletoExpired(dueDateStr: string): boolean {
 }
 
 export default function BoletoScannerScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const theme = useFinancialTheme();
   const { addTransaction, creditCards, loadingData } = useFinance();
@@ -89,9 +92,14 @@ export default function BoletoScannerScreen() {
   const [selectedCardId, setSelectedCardId] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const userCards = useMemo(() => {
+    if (!user?.uid) return [];
+    return creditCards.filter((c: any) => c.userId === user.uid || c.user_id === user.uid);
+  }, [creditCards, user?.uid]);
+
   const selectedCard = useMemo(
-    () => creditCards.find((card) => card.id === selectedCardId) ?? null,
-    [creditCards, selectedCardId]
+    () => userCards.find((card: any) => card.id === selectedCardId) ?? null,
+    [userCards, selectedCardId]
   );
 
   const resetBoletoInput = () => {
@@ -324,7 +332,7 @@ export default function BoletoScannerScreen() {
                 <Text style={[s.paymentText, paymentMethod === 'balance' && { color: theme.accent }]}>Saldo</Text>
               </TouchableOpacity>
 
-              {creditCards.map((card) => {
+              {userCards.map((card: any) => {
                 const available = Math.max(cardLimit(card) - card.used, 0);
                 const active = paymentMethod === 'credit_card' && selectedCardId === card.id;
                 return (
